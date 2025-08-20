@@ -1,0 +1,48 @@
+erDiagram
+  APPLICATION ||--o{ CERTIFICATE : "has"
+  APPLICATION ||..o{ FARM_FINDING : "linked by sealId"
+  FARM_FINDING ||--o{ RESOLVER_TICKET : "has"
+  HIT_COUNTER
+
+  APPLICATION {
+    LONG id PK
+    STRING sealId "unique"
+    STRING name
+    STRING platform
+    STRING owningApg
+    STRING codeRepository
+    STRING certificates "legacy summary"
+  }
+
+  CERTIFICATE {
+    LONG id PK
+    STRING cn
+    STRING serial
+    DATE expirationDate
+    LONG application_id FK
+  }
+
+  FARM_FINDING {
+    LONG id PK
+    STRING description
+    STRING applicationSealId
+    STRING severity
+    STRING criticality
+    DATE targetDate
+    STRING assignedApg
+  }
+
+  RESOLVER_TICKET {
+    LONG id PK
+    STRING jiraKey
+    STRING jiraUrl
+    STRING apg
+    STRING status
+    LONG finding_id FK
+  }
+
+  HIT_COUNTER {
+    LONG id PK
+    LONG count
+  }
+
