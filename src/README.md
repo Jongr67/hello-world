@@ -150,21 +150,59 @@ spring.web.resources.add-mappings=true
 
 ## ER Diagram
 
-![ER Diagram](docs/er.svg)
+GitHub renders Mermaid directly, so the ERD appears inline below.
 
-To regenerate the diagram locally:
+```mermaid
+erDiagram
+  APPLICATION ||--o{ CERTIFICATE : "has"
+  APPLICATION ||..o{ FARM_FINDING : "linked by sealId"
+  FARM_FINDING ||--o{ RESOLVER_TICKET : "has"
+  HIT_COUNTER
 
-1) Ensure Node is installed and install the Mermaid CLI and Puppeteer dependencies.
-- From `frontend/` directory:
-  - `npm install` (installs dev deps including `@mermaid-js/mermaid-cli` and `puppeteer`)
+  APPLICATION {
+    LONG id PK
+    STRING sealId "unique"
+    STRING name
+    STRING platform
+    STRING owningApg
+    STRING codeRepository
+    STRING certificates "legacy summary"
+  }
 
-2) Generate the SVG from the Mermaid source:
-- `npm run diagram`
+  CERTIFICATE {
+    LONG id PK
+    STRING cn
+    STRING serial
+    DATE expirationDate
+    LONG application_id FK
+  }
 
-Notes:
-- The CLI requires a Chromium binary. Installing `puppeteer` downloads a compatible build automatically. If you prefer to use your system Chrome, set `PUPPETEER_EXECUTABLE_PATH` to your Chrome path before running the command.
-- Mermaid source: `docs/er.mmd`
-- Output image: `docs/er.svg` (embedded above)
+  FARM_FINDING {
+    LONG id PK
+    STRING description
+    STRING applicationSealId
+    STRING severity
+    STRING criticality
+    DATE targetDate
+    STRING assignedApg
+  }
+
+  RESOLVER_TICKET {
+    LONG id PK
+    STRING jiraKey
+    STRING jiraUrl
+    STRING apg
+    STRING status
+    LONG finding_id FK
+  }
+
+  HIT_COUNTER {
+    LONG id PK
+    LONG count
+  }
+```
+
+Source file: `docs/er.mmd`
 
 ## REST APIs
 

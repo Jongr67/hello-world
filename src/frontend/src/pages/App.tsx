@@ -500,6 +500,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif', margin: 32, color: '#111827' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h1 style={{ margin: 0, fontSize: 28 }}>Security Dashboard</h1>
           <div style={{ display: 'inline-flex', background: '#f3f4f6', borderRadius: 9999, padding: 4, gap: 4 }}>
