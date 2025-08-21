@@ -59,11 +59,15 @@ export default function App() {
     application?: Application;
     applicationId?: number;
   }>>([]);
+  const [newCert, setNewCert] = useState<{ cn: string; serial: string; expirationDate: string; applicationId: string }>({ cn: '', serial: '', expirationDate: '', applicationId: '' });
+  const [creatingCert, setCreatingCert] = useState(false);
+  const [editingCertId, setEditingCertId] = useState<number | null>(null);
+  const [editingCertFields, setEditingCertFields] = useState<{ cn?: string; serial?: string; expirationDate?: string; applicationId?: number | '' }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [editingApp, setEditingApp] = useState<Application | null>(null);
-  const [formApp, setFormApp] = useState<Partial<Application>>({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '', certificates: '' });
+  const [formApp, setFormApp] = useState<Partial<Application>>({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '' });
 
   const [flyoutApp, setFlyoutApp] = useState<Application | null>(null);
   const [flyoutLoading, setFlyoutLoading] = useState(false);
@@ -124,6 +128,17 @@ export default function App() {
     }
   }
 
+  async function refreshCertificates() {
+    try {
+      const res = await fetch('/api/certificates');
+      if (!res.ok) throw new Error('Failed to fetch certificates');
+      const data = await res.json();
+      setCertificates(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      setError(e.message || String(e));
+    }
+  }
+
   async function refreshGlobalTickets() {
     try {
       const res = await fetch('/api/tickets');
@@ -137,7 +152,7 @@ export default function App() {
 
   function startCreateApp() {
     setEditingApp(null);
-    setFormApp({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '', certificates: '' });
+    setFormApp({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '' });
   }
 
   function startEditApp(app: Application) {
@@ -158,7 +173,6 @@ export default function App() {
         platform: formApp.platform || '',
         owningApg: formApp.owningApg || '',
         codeRepository: formApp.codeRepository || '',
-        certificates: formApp.certificates || '',
       };
       if (!payload.sealId || !payload.name) {
         setError('Seal ID and Name are required');
@@ -172,7 +186,7 @@ export default function App() {
       if (!res.ok) throw new Error(`Failed to ${editingApp ? 'update' : 'create'} application`);
       await refreshApplications();
       setEditingApp(null);
-      setFormApp({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '', certificates: '' });
+      setFormApp({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '' });
       setError('');
     } catch (e: any) {
       setError(e.message || String(e));
@@ -185,6 +199,71 @@ export default function App() {
       const res = await fetch(`/api/applications/${app.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete application');
       await refreshApplications();
+    } catch (e: any) {
+      setError(e.message || String(e));
+    }
+  }
+
+  async function createCertificate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newCert.applicationId) { setError('Select an application'); return; }
+    try {
+      setCreatingCert(true);
+      const payload: any = {
+        cn: (newCert.cn || '').trim(),
+        serial: (newCert.serial || '').trim(),
+        expirationDate: (newCert.expirationDate || '').trim() || null,
+      };
+      const res = await fetch(`/api/certificates/application/${newCert.applicationId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Failed to create certificate');
+      await refreshCertificates();
+      setNewCert({ cn: '', serial: '', expirationDate: '', applicationId: '' });
+      setError('');
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setCreatingCert(false);
+    }
+  }
+
+  function startEditCertificate(c: { id: number; cn?: string; serial?: string; expirationDate?: string; application?: Application; applicationId?: number }) {
+    setEditingCertId(c.id);
+    setEditingCertFields({
+      cn: c.cn || '',
+      serial: c.serial || '',
+      expirationDate: (c.expirationDate || '').substring(0, 10),
+      applicationId: (c.application?.id || c.applicationId) ?? ''
+    });
+  }
+
+  function cancelEditCertificate() {
+    setEditingCertId(null);
+    setEditingCertFields({});
+  }
+
+  async function saveEditCertificate(id: number) {
+    try {
+      const payload: any = {
+        cn: (editingCertFields.cn || '').toString().trim(),
+        serial: (editingCertFields.serial || '').toString().trim(),
+        expirationDate: (editingCertFields.expirationDate || '').toString().trim() || null,
+      };
+      if (editingCertFields.applicationId) {
+        payload.applicationId = editingCertFields.applicationId;
+      }
+      const res = await fetch(`/api/certificates/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Failed to update certificate');
+      await refreshCertificates();
+      cancelEditCertificate();
+      setError('');
     } catch (e: any) {
       setError(e.message || String(e));
     }
@@ -567,10 +646,7 @@ export default function App() {
                   <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Code Repository</label>
                   <input value={formApp.codeRepository || ''} onChange={e => updateForm('codeRepository', e.target.value)} placeholder="https://git.example.com/team/repo" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Certificates</label>
-                  <input value={formApp.certificates || ''} onChange={e => updateForm('certificates', e.target.value)} placeholder="comma/semicolon separated list or CNs" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
+                
                 <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8 }}>
                   <button type="submit" style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #10b981', background: '#10b981', color: '#fff', cursor: 'pointer' }}>{editingApp ? 'Update' : 'Create'}</button>
                   {editingApp && (
@@ -705,12 +781,39 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ marginTop: 0 }}>Certificates</h3>
               </div>
+              <form onSubmit={createCertificate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 8, alignItems: 'end', marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>CN</label>
+                  <input value={newCert.cn} onChange={e => setNewCert(prev => ({ ...prev, cn: e.target.value }))} placeholder="e.g. portal.example.com" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Serial</label>
+                  <input value={newCert.serial} onChange={e => setNewCert(prev => ({ ...prev, serial: e.target.value }))} placeholder="optional" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Expiration Date</label>
+                  <input type="date" value={newCert.expirationDate} onChange={e => setNewCert(prev => ({ ...prev, expirationDate: e.target.value }))} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Application</label>
+                  <select value={newCert.applicationId} onChange={e => setNewCert(prev => ({ ...prev, applicationId: e.target.value }))} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }}>
+                    <option value="">Select application…</option>
+                    {applications.map(a => (
+                      <option key={a.id} value={a.id}>{a.name} ({a.sealId})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <button type="submit" disabled={creatingCert} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #10b981', background: '#10b981', color: '#fff', cursor: creatingCert ? 'not-allowed' : 'pointer' }}>Add</button>
+                </div>
+              </form>
               <div style={{ overflowX: 'auto', marginTop: 8 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px 180px 200px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 800 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px 180px 200px 140px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 950 }}>
                   <div>CN</div>
                   <div>Serial</div>
                   <div>Expiration Date</div>
                   <div>Application</div>
+                  <div>Actions</div>
                 </div>
                 {loading ? (
                   <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>Loading certificates…</div>
@@ -718,11 +821,42 @@ export default function App() {
                   <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>No certificates</div>
                 ) : (
                   certificates.map(c => (
-                    <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1fr 220px 180px 200px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.cn || '-'}</div>
-                      <div>{c.serial || '-'}</div>
-                      <div>{c.expirationDate || '-'}</div>
-                      <div>{applications.find(a => a.id === (c.application?.id || c.applicationId))?.name || '-'}</div>
+                    <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1fr 220px 180px 200px 140px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                      {editingCertId === c.id ? (
+                        <>
+                          <div>
+                            <input value={editingCertFields.cn || ''} onChange={e => setEditingCertFields(prev => ({ ...prev, cn: e.target.value }))} placeholder="CN" style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }} />
+                          </div>
+                          <div>
+                            <input value={editingCertFields.serial || ''} onChange={e => setEditingCertFields(prev => ({ ...prev, serial: e.target.value }))} placeholder="Serial" style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }} />
+                          </div>
+                          <div>
+                            <input type="date" value={editingCertFields.expirationDate || ''} onChange={e => setEditingCertFields(prev => ({ ...prev, expirationDate: e.target.value }))} style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }} />
+                          </div>
+                          <div>
+                            <select value={editingCertFields.applicationId ?? ''} onChange={e => setEditingCertFields(prev => ({ ...prev, applicationId: e.target.value ? Number(e.target.value) : '' }))} style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }}>
+                              <option value="">Select application…</option>
+                              {applications.map(a => (
+                                <option key={a.id} value={a.id}>{a.name} ({a.sealId})</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <button onClick={() => saveEditCertificate(c.id)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #10b981', background: '#10b981', color: '#fff', cursor: 'pointer', marginRight: 6 }}>Save</button>
+                            <button onClick={cancelEditCertificate} type="button" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Cancel</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.cn || '-'}</div>
+                          <div>{c.serial || '-'}</div>
+                          <div>{c.expirationDate || '-'}</div>
+                          <div>{applications.find(a => a.id === (c.application?.id || c.applicationId))?.name || '-'}</div>
+                          <div>
+                            <button onClick={() => startEditCertificate(c)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Edit</button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))
                 )}

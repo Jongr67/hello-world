@@ -1,10 +1,12 @@
 package com.example.hello;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Random;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.hello.model.Application;
 import com.example.hello.model.Certificate;
@@ -27,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
 	}
 
 	@Override
+	@Transactional
 	public void run(String... args) {
 		// Seed Applications if none exist
 		if (applicationRepository.count() == 0) {
@@ -79,6 +82,25 @@ public class DataInitializer implements CommandLineRunner {
 			c3.setExpirationDate(LocalDate.now().plusDays(365));
 			certificateRepository.save(c3);
 		}
+
+		// Backfill certificate entities from each application's certificates string without touching lazy collections
+		applicationRepository.findAll().forEach(app -> {
+			String raw = app.getCertificates();
+			if (raw == null || raw.trim().isEmpty()) return;
+			// if the app already has certificate entities, skip using repository existence check
+			if (certificateRepository.existsByApplication_Id(app.getId())) return;
+			Arrays.stream(raw.split("[;,]"))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.forEach(cn -> {
+					Certificate c = new Certificate();
+					c.setApplication(app);
+					c.setCn(cn);
+					c.setSerial("");
+					c.setExpirationDate(null);
+					certificateRepository.save(c);
+				});
+		});
 
 		long existing = farmFindingRepository.count();
 		long target = 50;

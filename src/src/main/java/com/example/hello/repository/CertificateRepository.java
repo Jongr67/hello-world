@@ -8,7 +8,9 @@ import com.example.hello.model.Certificate;
 
 public interface CertificateRepository extends JpaRepository<Certificate, Long> {
 
-    List<Certificate> findByApplicationId(Long applicationId);
+    List<Certificate> findByApplication_Id(Long applicationId);
+
+    boolean existsByApplication_Id(Long applicationId);
 }
 
 

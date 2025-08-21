@@ -3,12 +3,14 @@ package com.example.hello.model;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Transient;
 
 @Entity
 public class Certificate {
@@ -27,6 +29,10 @@ public class Certificate {
 	@ManyToOne
 	@JsonBackReference
 	private Application application;
+
+	// Holds application id from JSON input when application entity is not initialized
+	@Transient
+	private Long applicationIdShadow;
 
 	public Certificate() {
 	}
@@ -65,6 +71,18 @@ public class Certificate {
 
 	public void setApplication(Application application) {
 		this.application = application;
+	}
+
+	@Transient
+	@JsonProperty("applicationId")
+	public Long getApplicationId() {
+		return application != null ? application.getId() : applicationIdShadow;
+	}
+
+	@Transient
+	@JsonProperty("applicationId")
+	public void setApplicationId(Long applicationId) {
+		this.applicationIdShadow = applicationId;
 	}
 }
 

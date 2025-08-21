@@ -1,0 +1,36 @@
+nohup: ignoring input
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.2)
+
+2025-08-20T20:32:52.442-04:00  INFO 29184 --- [           main] com.example.hello.HelloApplication       : Starting HelloApplication v0.0.1-SNAPSHOT using Java 21.0.8 with PID 29184 (C:\Users\jongr\dev\src\target\hello-0.0.1-SNAPSHOT.jar started by jongr in C:\Users\jongr\dev\src)
+2025-08-20T20:32:52.446-04:00  INFO 29184 --- [           main] com.example.hello.HelloApplication       : No active profile set, falling back to 1 default profile: "default"
+2025-08-20T20:32:53.621-04:00  INFO 29184 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-08-20T20:32:53.690-04:00  INFO 29184 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 59 ms. Found 5 JPA repository interfaces.
+2025-08-20T20:32:54.460-04:00  INFO 29184 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8081 (http)
+2025-08-20T20:32:54.481-04:00  INFO 29184 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-08-20T20:32:54.482-04:00  INFO 29184 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.26]
+2025-08-20T20:32:54.557-04:00  INFO 29184 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-08-20T20:32:54.559-04:00  INFO 29184 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2015 ms
+2025-08-20T20:32:54.729-04:00  INFO 29184 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-08-20T20:32:54.928-04:00  INFO 29184 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:80ca2101-8a39-4a52-b4a4-c81934ed4c5b user=SA
+2025-08-20T20:32:54.929-04:00  INFO 29184 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-08-20T20:32:55.022-04:00  INFO 29184 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-08-20T20:32:55.148-04:00  INFO 29184 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-08-20T20:32:55.214-04:00  INFO 29184 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-08-20T20:32:55.621-04:00  INFO 29184 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-08-20T20:32:56.433-04:00  INFO 29184 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-08-20T20:32:56.478-04:00  INFO 29184 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-08-20T20:32:56.981-04:00  INFO 29184 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-08-20T20:32:57.894-04:00  WARN 29184 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-08-20T20:32:58.775-04:00  INFO 29184 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8081 (http) with context path '/'
+2025-08-20T20:32:58.792-04:00  INFO 29184 --- [           main] com.example.hello.HelloApplication       : Started HelloApplication in 6.826 seconds (process running for 7.495)
+2025-08-20T20:33:36.459-04:00  INFO 29184 --- [nio-8081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-08-20T20:33:36.460-04:00  INFO 29184 --- [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-08-20T20:33:36.461-04:00  INFO 29184 --- [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms

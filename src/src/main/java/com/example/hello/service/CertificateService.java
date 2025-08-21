@@ -29,7 +29,7 @@ public class CertificateService {
 
     @Transactional(readOnly = true)
     public List<Certificate> listByApplication(Long applicationId) {
-        return certificateRepository.findByApplicationId(applicationId);
+        return certificateRepository.findByApplication_Id(applicationId);
     }
 
     public Certificate createForApplication(Long applicationId, Certificate certificate) {
@@ -45,6 +45,12 @@ public class CertificateService {
         existing.setCn(updated.getCn());
         existing.setSerial(updated.getSerial());
         existing.setExpirationDate(updated.getExpirationDate());
+        // allow changing the associated application if applicationId is provided
+        if (updated.getApplicationId() != null) {
+            Application application = applicationRepository.findById(updated.getApplicationId())
+                .orElseThrow(() -> new IllegalArgumentException("Application not found: " + updated.getApplicationId()));
+            existing.setApplication(application);
+        }
         return certificateRepository.save(existing);
     }
 
