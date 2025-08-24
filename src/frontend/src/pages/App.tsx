@@ -6,19 +6,14 @@ import {
   Legend,
 } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
+import TicketsSection from '../components/TicketsSection';
+import FindingsSection from '../components/FindingsSection';
+import { Application, Finding } from '../types/domain';
+import { api } from '../services/api';
+import ApplicationsSection from '../components/ApplicationsSection';
+import CertificatesSection from '../components/CertificatesSection';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
-
-type Finding = {
-  id: number;
-  description?: string;
-  applicationSealId?: string;
-  severity?: string;
-  criticality?: string;
-  targetDate?: string;
-  assignedApg?: string;
-  createdDate?: string;
-};
 
 type Application = {
   id: number;
@@ -88,20 +83,8 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [summaryRes, findingsRes, appsRes, certsRes, ticketsRes] = await Promise.all([
-          fetch('/api/findings/summary/apg'),
-          fetch('/api/findings'),
-          fetch('/api/applications'),
-          fetch('/api/certificates'),
-          fetch('/api/tickets'),
-        ]);
-        if (!summaryRes.ok) throw new Error('Failed to fetch APG summary');
-        if (!findingsRes.ok) throw new Error('Failed to fetch findings');
-        if (!appsRes.ok) throw new Error('Failed to fetch applications');
-        if (!certsRes.ok) throw new Error('Failed to fetch certificates');
-        if (!ticketsRes.ok) throw new Error('Failed to fetch resolver tickets');
         const [summaryData, findingsData, appsData, certsData, ticketsData] = await Promise.all([
-          summaryRes.json(), findingsRes.json(), appsRes.json(), certsRes.json(), ticketsRes.json()
+          api.getFindingsSummary(), api.getFindings(), api.getApplications(), api.getCertificates(), api.getTickets()
         ]);
         setSummary(summaryData || {});
         setFindings(Array.isArray(findingsData) ? findingsData : []);
@@ -120,9 +103,7 @@ export default function App() {
 
   async function refreshApplications() {
     try {
-      const res = await fetch('/api/applications');
-      if (!res.ok) throw new Error('Failed to fetch applications');
-      const data = await res.json();
+      const data = await api.getApplications();
       setApplications(Array.isArray(data) ? data : []);
     } catch (e: any) {
       setError(e.message || String(e));
@@ -142,9 +123,7 @@ export default function App() {
 
   async function refreshGlobalTickets() {
     try {
-      const res = await fetch('/api/tickets');
-      if (!res.ok) throw new Error('Failed to fetch resolver tickets');
-      const data = await res.json();
+      const data = await api.getTickets();
       setTickets(Array.isArray(data) ? data : []);
     } catch {
       // ignore background refresh errors
@@ -527,179 +506,38 @@ export default function App() {
         {error && <p style={{ color: '#b91c1c' }}>Error: {error}</p>}
 
         {activeTab === 'findings' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
-            <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 style={{ marginTop: 0 }}>Findings by APG</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <a href="/api/findings/export" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', textDecoration: 'none' }} title="Download Findings Excel">Export</a>
-                  <label style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
-                    Import
-                    <input type="file" accept=".xlsx" onChange={async e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const form = new FormData();
-                      form.append('file', file);
-                      try {
-                        const res = await fetch('/api/findings/import', { method: 'POST', body: form });
-                        if (!res.ok) throw new Error('Import failed');
-                        // refresh findings
-                        const refreshed = await fetch('/api/findings');
-                        if (refreshed.ok) {
-                          const data = await refreshed.json();
-                          setFindings(Array.isArray(data) ? data : []);
-                        }
-                        e.currentTarget.value = '';
-                      } catch (err) {
-                        console.error(err);
-                        alert('Import failed');
-                      }
-                    }} style={{ display: 'none' }} />
-                  </label>
-                </div>
-              </div>
-              {loading ? (
-                <p style={{ color: '#6b7280', fontSize: 12 }}>Loading chart…</p>
-              ) : (
-                <Pie data={pieData} options={{ plugins: { legend: { position: 'bottom' as const } } }} />
-              )}
-            </div>
-
-            <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-              <h3 style={{ marginTop: 0 }}>Current Findings</h3>
-              {loading ? (
-                <p style={{ color: '#6b7280', fontSize: 12 }}>Loading findings…</p>
-              ) : (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151' }}>
-                    <div>ID</div>
-                    <div>Description</div>
-                    <div>Application Seal ID</div>
-                    <div>Severity / Criticality</div>
-                    <div>Assigned APG</div>
-                    <div>Resolver Ticket</div>
-                    <div>Created</div>
-                  </div>
-                  {findings.length === 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                      <div style={{ color: '#6b7280', fontSize: 12 }}>No findings</div>
-                    </div>
-                  )}
-                  {findings.map((f) => (
-                    <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                      <div>#{f.id}</div>
-                      <div>
-                        <div>{f.description || '-'}</div>
-                        {f.targetDate && <div style={{ color: '#6b7280', fontSize: 12 }}>Target: {f.targetDate}</div>}
-                      </div>
-                      <div>{f.applicationSealId || '-'}</div>
-                      <div>
-                        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 9999, fontSize: 12, background: '#eef2ff', color: '#3730a3' }}>{f.severity || 'n/a'}</span>
-                        <span style={{ marginLeft: 8, display: 'inline-block', padding: '2px 8px', borderRadius: 9999, fontSize: 12, background: '#eef2ff', color: '#3730a3' }}>{f.criticality || 'n/a'}</span>
-                      </div>
-                      <div>{f.assignedApg || '-'}</div>
-                      <div>
-                        {ticketsByFindingId[f.id] ? (
-                          <div style={{ color: '#065f46' }}>
-                            {(ticketsListByFindingId[f.id] || []).map(t => t.jiraKey || '').filter(Boolean).join(', ')}
-                          </div>
-                        ) : (
-                          <span title="No resolver ticket" aria-label="No resolver ticket" style={{ color: '#b45309' }}>⚠️</span>
-                        )}
-                        <div style={{ marginTop: 6 }}>
-                          <button onClick={() => openTicketFlyout(f)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 12 }}>Manage Tickets</button>
-                        </div>
-                      </div>
-                      <div>{(f.createdDate || '').toString().replace('T', ' ').slice(0, 16) || '-'}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <FindingsSection
+            findings={findings}
+            summary={summary}
+            loading={loading}
+            ticketsByFindingId={ticketsByFindingId}
+            ticketsListByFindingId={ticketsListByFindingId as any}
+            onOpenTicketFlyout={openTicketFlyout}
+            onRefreshFindings={async () => {
+              try {
+                const res = await fetch('/api/findings');
+                if (res.ok) {
+                  const data = await res.json();
+                  setFindings(Array.isArray(data) ? data : []);
+                }
+              } catch {}
+            }}
+          />
         )}
 
         {activeTab === 'applications' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, alignItems: 'start' }}>
-            <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0 }}>Applications</h3>
-                <button onClick={startCreateApp} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>New Application</button>
-              </div>
-
-              <div style={{ overflowX: 'auto', marginTop: 8 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 140px 160px 1fr 120px 120px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 900 }}>
-                  <div>Seal ID</div>
-                  <div>App Name</div>
-                  <div>Platform</div>
-                  <div>Owning APG</div>
-                  <div>Code Repository</div>
-                  <div>Certificates</div>
-                  <div>Farm Findings</div>
-                </div>
-                {loading ? (
-                  <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>Loading applications…</div>
-                ) : applications.length === 0 ? (
-                  <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>No applications</div>
-                ) : (
-                  applications.map(app => (
-                    <div key={app.id} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 140px 160px 1fr 120px 120px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                      <div>{app.sealId}</div>
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{app.name}</div>
-                      </div>
-                      <div>{app.platform || '-'}</div>
-                      <div>{app.owningApg || '-'}</div>
-                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.codeRepository || '-'}</div>
-                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(certsByAppId[app.id] || []).join(', ') || '-'}</div>
-                      <div>
-                        <button onClick={() => openFindingsFlyout(app)} style={{ padding: 0, margin: 0, border: 'none', background: 'none', color: '#2563eb', textDecoration: 'underline', cursor: (findingsBySealId[app.sealId] || 0) > 0 ? 'pointer' : 'default' }} title="View related findings">
-                          {findingsBySealId[app.sealId] || 0}
-                        </button>
-                      </div>
-                      <div style={{ gridColumn: '1 / -1' }}>
-                        <button onClick={() => startEditApp(app)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', marginRight: 8 }}>Edit</button>
-                        <button onClick={() => deleteApp(app)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #ef4444', background: '#fff', color: '#b91c1c', cursor: 'pointer' }}>Delete</button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-              <h3 style={{ marginTop: 0 }}>{editingApp ? 'Edit Application' : 'Create Application'}</h3>
-              <form onSubmit={submitAppForm} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Seal ID *</label>
-                  <input value={formApp.sealId || ''} onChange={e => updateForm('sealId', e.target.value)} placeholder="e.g. APP-00001" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>App Name *</label>
-                  <input value={formApp.name || ''} onChange={e => updateForm('name', e.target.value)} placeholder="e.g. Customer Portal" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Platform</label>
-                  <input value={formApp.platform || ''} onChange={e => updateForm('platform', e.target.value)} placeholder="Web / iOS / Android / Service" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Owning APG</label>
-                  <input value={formApp.owningApg || ''} onChange={e => updateForm('owningApg', e.target.value)} placeholder="Relationships / Identity / ..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Code Repository</label>
-                  <input value={formApp.codeRepository || ''} onChange={e => updateForm('codeRepository', e.target.value)} placeholder="https://git.example.com/team/repo" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                
-                <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8 }}>
-                  <button type="submit" style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #10b981', background: '#10b981', color: '#fff', cursor: 'pointer' }}>{editingApp ? 'Update' : 'Create'}</button>
-                  {editingApp && (
-                    <button type="button" onClick={startCreateApp} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Cancel</button>
-                  )}
-                </div>
-              </form>
-            </div>
-          </div>
+          <ApplicationsSection
+            applications={applications}
+            loading={loading}
+            findingsBySealId={findingsBySealId}
+            editingApp={editingApp}
+            formApp={formApp}
+            startCreateApp={startCreateApp}
+            startEditApp={startEditApp}
+            deleteApp={deleteApp}
+            submitAppForm={submitAppForm}
+            updateForm={updateForm as any}
+          />
         )}
 
         {ticketFlyoutFinding && (
@@ -820,157 +658,24 @@ export default function App() {
         )}
 
         {activeTab === 'certificates' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, alignItems: 'start' }}>
-            <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0 }}>Certificates</h3>
-              </div>
-              <form onSubmit={createCertificate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 8, alignItems: 'end', marginBottom: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>CN</label>
-                  <input value={newCert.cn} onChange={e => setNewCert(prev => ({ ...prev, cn: e.target.value }))} placeholder="e.g. portal.example.com" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Serial</label>
-                  <input value={newCert.serial} onChange={e => setNewCert(prev => ({ ...prev, serial: e.target.value }))} placeholder="optional" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Expiration Date</label>
-                  <input type="date" value={newCert.expirationDate} onChange={e => setNewCert(prev => ({ ...prev, expirationDate: e.target.value }))} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Application</label>
-                  <select value={newCert.applicationId} onChange={e => setNewCert(prev => ({ ...prev, applicationId: e.target.value }))} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }}>
-                    <option value="">Select application…</option>
-                    {applications.map(a => (
-                      <option key={a.id} value={a.id}>{a.name} ({a.sealId})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <button type="submit" disabled={creatingCert} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #10b981', background: '#10b981', color: '#fff', cursor: creatingCert ? 'not-allowed' : 'pointer' }}>Add</button>
-                </div>
-              </form>
-              <div style={{ overflowX: 'auto', marginTop: 8 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px 180px 200px 140px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 950 }}>
-                  <div>CN</div>
-                  <div>Serial</div>
-                  <div>Expiration Date</div>
-                  <div>Application</div>
-                  <div>Actions</div>
-                </div>
-                {loading ? (
-                  <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>Loading certificates…</div>
-                ) : certificates.length === 0 ? (
-                  <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>No certificates</div>
-                ) : (
-                  certificates.map(c => (
-                    <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1fr 220px 180px 200px 140px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                      {editingCertId === c.id ? (
-                        <>
-                          <div>
-                            <input value={editingCertFields.cn || ''} onChange={e => setEditingCertFields(prev => ({ ...prev, cn: e.target.value }))} placeholder="CN" style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }} />
-                          </div>
-                          <div>
-                            <input value={editingCertFields.serial || ''} onChange={e => setEditingCertFields(prev => ({ ...prev, serial: e.target.value }))} placeholder="Serial" style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }} />
-                          </div>
-                          <div>
-                            <input type="date" value={editingCertFields.expirationDate || ''} onChange={e => setEditingCertFields(prev => ({ ...prev, expirationDate: e.target.value }))} style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }} />
-                          </div>
-                          <div>
-                            <select value={editingCertFields.applicationId ?? ''} onChange={e => setEditingCertFields(prev => ({ ...prev, applicationId: e.target.value ? Number(e.target.value) : '' }))} style={{ width: '100%', padding: 6, border: '1px solid #d1d5db', borderRadius: 6 }}>
-                              <option value="">Select application…</option>
-                              {applications.map(a => (
-                                <option key={a.id} value={a.id}>{a.name} ({a.sealId})</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <button onClick={() => saveEditCertificate(c.id)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #10b981', background: '#10b981', color: '#fff', cursor: 'pointer', marginRight: 6 }}>Save</button>
-                            <button onClick={cancelEditCertificate} type="button" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Cancel</button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.cn || '-'}</div>
-                          <div>{c.serial || '-'}</div>
-                          <div>{c.expirationDate || '-'}</div>
-                          <div>{applications.find(a => a.id === (c.application?.id || c.applicationId))?.name || '-'}</div>
-                          <div>
-                            <button onClick={() => startEditCertificate(c)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Edit</button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          <CertificatesSection
+            applications={applications}
+            certificates={certificates}
+            loading={loading}
+            newCert={newCert as any}
+            setNewCert={(updater: any) => setNewCert(prev => updater(prev))}
+            creatingCert={creatingCert}
+            onCreateCertificate={createCertificate}
+            editingCertId={editingCertId}
+            editingCertFields={editingCertFields as any}
+            startEditCertificate={startEditCertificate as any}
+            cancelEditCertificate={cancelEditCertificate}
+            saveEditCertificate={saveEditCertificate}
+          />
         )}
 
         {activeTab === 'tickets' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, alignItems: 'start' }}>
-            <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0 }}>All Resolver Tickets</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <a href="/api/tickets/export" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', textDecoration: 'none' }} title="Download Excel of tickets">Export</a>
-                  <label style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
-                    Import
-                    <input type="file" accept=".xlsx" onChange={async e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const form = new FormData();
-                      form.append('file', file);
-                      try {
-                        const res = await fetch('/api/tickets/import', { method: 'POST', body: form });
-                        if (!res.ok) throw new Error('Import failed');
-                        await refreshGlobalTickets();
-                        // clear input value so the same file can be selected again if needed
-                        e.currentTarget.value = '';
-                      } catch (err) {
-                        console.error(err);
-                        alert('Import failed');
-                      }
-                    }} style={{ display: 'none' }} />
-                  </label>
-                </div>
-              </div>
-              <div style={{ overflowX: 'auto', marginTop: 8 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 160px 140px 180px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 1000 }}>
-                  <div>Finding ID</div>
-                  <div>Jira Key / URL</div>
-                  <div>APG</div>
-                  <div>Status</div>
-                  <div>Application (Seal)</div>
-                  <div>Application Name</div>
-                </div>
-                {loading ? (
-                  <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>Loading tickets…</div>
-                ) : tickets.length === 0 ? (
-                  <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>No resolver tickets</div>
-                ) : (
-                  tickets.map(t => {
-                    const app = applications.find(a => a.sealId === (t.applicationSealId || ''));
-                    return (
-                      <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 160px 140px 180px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                        <div>#{t.findingId ?? '-'}</div>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{t.jiraKey || '-'}</div>
-                          {t.jiraUrl ? <a href={t.jiraUrl} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{t.jiraUrl}</a> : <span style={{ color: '#6b7280', fontSize: 12 }}>No URL</span>}
-                        </div>
-                        <div>{t.apg || '-'}</div>
-                        <div>{t.status || '-'}</div>
-                        <div>{t.applicationSealId || '-'}</div>
-                        <div>{app?.name || '-'}</div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
+          <TicketsSection applications={applications} tickets={tickets} loading={loading} onRefreshTickets={refreshGlobalTickets} />
         )}
       </div>
     </div>

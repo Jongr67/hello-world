@@ -2,7 +2,13 @@
 
 This project is a simple Security Dashboard that tracks FARM findings and the applications they affect. It provides a React-based UI backed by a Spring Boot API with H2 as the data store.
 
-- **Frontend**: React 18 + Vite (dev server at `http://localhost:5173` with proxy to the backend)
+- **Frontend**: React 18 + Vite (dev server at `http://localhost:5173` with proxy to the backend). UI code is modular:
+  - `frontend/src/components/FindingsSection.tsx`
+  - `frontend/src/components/ApplicationsSection.tsx`
+  - `frontend/src/components/CertificatesSection.tsx`
+  - `frontend/src/components/TicketsSection.tsx`
+  - Shared types: `frontend/src/types/domain.ts`
+  - API helpers: `frontend/src/services/api.ts`
 - **Backend**: Spring Boot 3 (Java 17), Spring Data JPA, H2 database
 - **Database**: H2 file on disk (data persisted under `./data/hello.*`)
 
@@ -18,7 +24,7 @@ The dashboard shows a pie chart of findings by APG, a list of current findings, 
   - `repository` — Spring Data repositories
   - `DataInitializer` — seeds demo data for Applications, FARM findings, and Certificates
 - **Frontend** (`frontend/`)
-  - `src/pages/App.tsx` — single-page UI with tabs (Findings, Applications, Certificates, Resolver Tickets)
+  - `src/pages/App.tsx` — app shell that composes modular sections (Findings, Applications, Certificates, Resolver Tickets)
   - Vite dev proxy forwards `/api`, `/hello`, `/h2-console` to the backend (`vite.config.ts`)
 - **Database**
   - Configured in `src/main/resources/application.properties`
@@ -29,7 +35,7 @@ The dashboard shows a pie chart of findings by APG, a list of current findings, 
 
 - **Findings dashboard**
   - Pie chart of findings by APG
-  - Current findings table: ID, Description, Application Seal ID, Severity/Criticality, Assigned APG, Resolver Ticket(s)
+  - Current findings table: ID, Description, Application Seal ID, Severity/Criticality, Assigned APG, Resolver Ticket(s), Created date
   - Resolver ticket column shows Jira keys if present; otherwise a warning icon
   - “Manage Tickets” flyout per finding to add/delete Jira resolver tickets
 - **Applications management**
@@ -39,6 +45,7 @@ The dashboard shows a pie chart of findings by APG, a list of current findings, 
   - Findings count per application computed by matching `applicationSealId` to the application `sealId`
 - **Certificates**
   - Tab to view certificates table (CN, Serial, Expiration Date, Application)
+  - Create via form; edit inline, including changing associated application
   - Certificates are stored in H2 and associated 1:N to Applications
   - REST API supports create/update/delete and listing by application
 - **Resolver Tickets**
@@ -187,6 +194,10 @@ curl -X POST "http://localhost:8080/api/applications" \
 - `PUT /api/findings/{id}` — update finding
 - `DELETE /api/findings/{id}` — delete finding
 
+Excel:
+- `GET /api/findings/export` — download findings.xlsx (id, description, applicationSealId, severity, criticality, targetDate, assignedApg, createdDate)
+- `POST /api/findings/import` — upload findings.xlsx to bulk upsert (id optional; createdDate managed by server)
+
 Example create:
 
 ```bash
@@ -226,6 +237,10 @@ curl -X POST "http://localhost:8080/api/findings/42/tickets" \
 
 - `GET /api/tickets` — list all resolver tickets with summary fields:
   - `id`, `jiraKey`, `jiraUrl`, `apg`, `status`, `findingId`, `applicationSealId`
+
+Excel:
+- `GET /api/tickets/export` — download resolver_tickets.xlsx (id, findingId, applicationSealId, jiraKey, jiraUrl, apg, status)
+- `POST /api/tickets/import` — upload resolver_tickets.xlsx to bulk upsert (matches by id when provided)
 
 ### Certificates
 
