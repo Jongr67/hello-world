@@ -17,6 +17,7 @@ type Finding = {
   criticality?: string;
   targetDate?: string;
   assignedApg?: string;
+  createdDate?: string;
 };
 
 type Application = {
@@ -497,6 +498,18 @@ export default function App() {
     return map;
   }, [tickets]);
 
+  const certsByAppId = useMemo(() => {
+    const map: Record<number, string[]> = {};
+    for (const c of certificates) {
+      const appId = (c.application?.id || c.applicationId) as number | undefined;
+      if (!appId) continue;
+      const cn = (c.cn || '').toString();
+      if (!cn) continue;
+      (map[appId] = map[appId] || []).push(cn);
+    }
+    return map;
+  }, [certificates]);
+
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif', margin: 32, color: '#111827' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -516,7 +529,35 @@ export default function App() {
         {activeTab === 'findings' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
             <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-              <h3 style={{ marginTop: 0 }}>Findings by APG</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 style={{ marginTop: 0 }}>Findings by APG</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <a href="/api/findings/export" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', textDecoration: 'none' }} title="Download Findings Excel">Export</a>
+                  <label style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
+                    Import
+                    <input type="file" accept=".xlsx" onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const form = new FormData();
+                      form.append('file', file);
+                      try {
+                        const res = await fetch('/api/findings/import', { method: 'POST', body: form });
+                        if (!res.ok) throw new Error('Import failed');
+                        // refresh findings
+                        const refreshed = await fetch('/api/findings');
+                        if (refreshed.ok) {
+                          const data = await refreshed.json();
+                          setFindings(Array.isArray(data) ? data : []);
+                        }
+                        e.currentTarget.value = '';
+                      } catch (err) {
+                        console.error(err);
+                        alert('Import failed');
+                      }
+                    }} style={{ display: 'none' }} />
+                  </label>
+                </div>
+              </div>
               {loading ? (
                 <p style={{ color: '#6b7280', fontSize: 12 }}>Loading chart…</p>
               ) : (
@@ -530,21 +571,22 @@ export default function App() {
                 <p style={{ color: '#6b7280', fontSize: 12 }}>Loading findings…</p>
               ) : (
                 <div style={{ marginTop: 8 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151' }}>
                     <div>ID</div>
                     <div>Description</div>
                     <div>Application Seal ID</div>
                     <div>Severity / Criticality</div>
                     <div>Assigned APG</div>
                     <div>Resolver Ticket</div>
+                    <div>Created</div>
                   </div>
                   {findings.length === 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                       <div style={{ color: '#6b7280', fontSize: 12 }}>No findings</div>
                     </div>
                   )}
                   {findings.map((f) => (
-                    <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                    <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                       <div>#{f.id}</div>
                       <div>
                         <div>{f.description || '-'}</div>
@@ -568,6 +610,7 @@ export default function App() {
                           <button onClick={() => openTicketFlyout(f)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 12 }}>Manage Tickets</button>
                         </div>
                       </div>
+                      <div>{(f.createdDate || '').toString().replace('T', ' ').slice(0, 16) || '-'}</div>
                     </div>
                   ))}
                 </div>
@@ -608,7 +651,7 @@ export default function App() {
                       <div>{app.platform || '-'}</div>
                       <div>{app.owningApg || '-'}</div>
                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.codeRepository || '-'}</div>
-                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.certificates || '-'}</div>
+                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(certsByAppId[app.id] || []).join(', ') || '-'}</div>
                       <div>
                         <button onClick={() => openFindingsFlyout(app)} style={{ padding: 0, margin: 0, border: 'none', background: 'none', color: '#2563eb', textDecoration: 'underline', cursor: (findingsBySealId[app.sealId] || 0) > 0 ? 'pointer' : 'default' }} title="View related findings">
                           {findingsBySealId[app.sealId] || 0}
@@ -871,6 +914,28 @@ export default function App() {
             <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ marginTop: 0 }}>All Resolver Tickets</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <a href="/api/tickets/export" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', textDecoration: 'none' }} title="Download Excel of tickets">Export</a>
+                  <label style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
+                    Import
+                    <input type="file" accept=".xlsx" onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const form = new FormData();
+                      form.append('file', file);
+                      try {
+                        const res = await fetch('/api/tickets/import', { method: 'POST', body: form });
+                        if (!res.ok) throw new Error('Import failed');
+                        await refreshGlobalTickets();
+                        // clear input value so the same file can be selected again if needed
+                        e.currentTarget.value = '';
+                      } catch (err) {
+                        console.error(err);
+                        alert('Import failed');
+                      }
+                    }} style={{ display: 'none' }} />
+                  </label>
+                </div>
               </div>
               <div style={{ overflowX: 'auto', marginTop: 8 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 160px 140px 180px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 1000 }}>

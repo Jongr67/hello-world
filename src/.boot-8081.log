@@ -34,3 +34,7 @@ nohup: ignoring input
 2025-08-20T20:33:36.459-04:00  INFO 29184 --- [nio-8081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
 2025-08-20T20:33:36.460-04:00  INFO 29184 --- [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
 2025-08-20T20:33:36.461-04:00  INFO 29184 --- [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-08-21T00:28:03.908-04:00  WARN 29184 --- [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=2h22m36s888ms724µs300ns).
+2025-08-21T11:32:16.208-04:00  WARN 29184 --- [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10h4m41s405ms215µs700ns).
+2025-08-21T19:03:33.436-04:00  WARN 29184 --- [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=6h29m14s888ms960µs600ns).
+2025-08-21T21:42:53.464-04:00  WARN 29184 --- [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m17s976ms53µs800ns).

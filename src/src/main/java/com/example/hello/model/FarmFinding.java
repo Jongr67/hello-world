@@ -1,6 +1,7 @@
 package com.example.hello.model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,6 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
 
 @Entity
 public class FarmFinding {
@@ -29,6 +31,9 @@ public class FarmFinding {
 	private String criticality;
 
 	private LocalDate targetDate;
+
+	/** Timestamp when the finding was first saved. */
+	private LocalDateTime createdDate;
 
 	// Single owning APG for the finding (for charting and assignment)
 	private String assignedApg;
@@ -84,6 +89,14 @@ public class FarmFinding {
 		this.targetDate = targetDate;
 	}
 
+	public LocalDateTime getCreatedDate() {
+		return createdDate;
+	}
+
+	public void setCreatedDate(LocalDateTime createdDate) {
+		this.createdDate = createdDate;
+	}
+
 	public String getAssignedApg() {
 		return assignedApg;
 	}
@@ -108,6 +121,13 @@ public class FarmFinding {
 	public void removeResolverTicket(ResolverTicket ticket) {
 		ticket.setFinding(null);
 		this.resolverTickets.remove(ticket);
+	}
+
+	@PrePersist
+	void onCreate() {
+		if (this.createdDate == null) {
+			this.createdDate = LocalDateTime.now();
+		}
 	}
 }
 
