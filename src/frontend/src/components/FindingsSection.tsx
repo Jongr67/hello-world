@@ -30,6 +30,31 @@ export default function FindingsSection({ findings, summary, loading, ticketsByF
     return { labels, datasets: [{ data: values, backgroundColor: labels.map((_, i) => palette[i % palette.length]) }] };
   }, [summary]);
 
+  const dueBuckets = React.useMemo(() => {
+    const counts = { Overdue: 0, '≤30 days': 0, '31–60 days': 0, '61–90 days': 0 };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (const f of findings) {
+      const d = (f.targetDate || '').toString();
+      if (!d) continue;
+      const target = new Date(d + 'T00:00:00');
+      const diffMs = target.getTime() - today.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) counts.Overdue += 1;
+      else if (diffDays <= 30) counts['≤30 days'] += 1;
+      else if (diffDays <= 60) counts['31–60 days'] += 1;
+      else if (diffDays <= 90) counts['61–90 days'] += 1;
+    }
+    return counts;
+  }, [findings]);
+
+  const duePieData = React.useMemo(() => {
+    const labels = ['Overdue', '≤30 days', '31–60 days', '61–90 days'];
+    const values = labels.map(l => (dueBuckets as any)[l] as number);
+    const palette = ['#ef4444', '#f59e0b', '#84cc16', '#06b6d4'];
+    return { labels, datasets: [{ data: values, backgroundColor: labels.map((_, i) => palette[i % palette.length]) }] };
+  }, [dueBuckets]);
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
       <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
@@ -60,8 +85,24 @@ export default function FindingsSection({ findings, summary, loading, ticketsByF
         {loading ? (
           <p style={{ color: '#6b7280', fontSize: 12 }}>Loading chart…</p>
         ) : (
-          <Pie data={pieData} options={{ plugins: { legend: { position: 'bottom' as const } } }} />
+          <div style={{ height: 260 }}>
+            <Pie data={pieData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const } } }} />
+          </div>
         )}
+      </div>
+
+      <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
+        <h3 style={{ marginTop: 0 }}>Findings by Due Window</h3>
+        {loading ? (
+          <p style={{ color: '#6b7280', fontSize: 12 }}>Loading chart…</p>
+        ) : (
+          <div style={{ height: 260 }}>
+            <Pie data={duePieData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const } } }} />
+          </div>
+        )}
+        <div style={{ marginTop: 8, color: '#6b7280', fontSize: 12 }}>
+          Over 90 days and items without a target date are not included.
+        </div>
       </div>
 
       <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>

@@ -11,9 +11,17 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.hello.model.Application;
 import com.example.hello.model.Certificate;
 import com.example.hello.model.FarmFinding;
+import com.example.hello.model.ProductArea;
+import com.example.hello.model.Team;
+import com.example.hello.model.Person;
+import com.example.hello.model.Role;
 import com.example.hello.repository.ApplicationRepository;
 import com.example.hello.repository.CertificateRepository;
 import com.example.hello.repository.FarmFindingRepository;
+import com.example.hello.repository.ProductAreaRepository;
+import com.example.hello.repository.TeamRepository;
+import com.example.hello.repository.PersonRepository;
+import com.example.hello.repository.RoleRepository;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -21,18 +29,123 @@ public class DataInitializer implements CommandLineRunner {
 	private final FarmFindingRepository farmFindingRepository;
 	private final ApplicationRepository applicationRepository;
 	private final CertificateRepository certificateRepository;
+	private final ProductAreaRepository productAreaRepository;
+	private final TeamRepository teamRepository;
+	private final PersonRepository personRepository;
+	private final RoleRepository roleRepository;
 
-	public DataInitializer(FarmFindingRepository farmFindingRepository, ApplicationRepository applicationRepository, CertificateRepository certificateRepository) {
+	public DataInitializer(FarmFindingRepository farmFindingRepository, ApplicationRepository applicationRepository, CertificateRepository certificateRepository, ProductAreaRepository productAreaRepository, TeamRepository teamRepository, PersonRepository personRepository, RoleRepository roleRepository) {
 		this.farmFindingRepository = farmFindingRepository;
 		this.applicationRepository = applicationRepository;
 		this.certificateRepository = certificateRepository;
+		this.productAreaRepository = productAreaRepository;
+		this.teamRepository = teamRepository;
+		this.personRepository = personRepository;
+		this.roleRepository = roleRepository;
 	}
 
 	@Override
 	@Transactional
 	public void run(String... args) {
+		// Seed Product Areas if none exist
+		if (productAreaRepository.count() == 0) {
+			ProductArea pa1 = new ProductArea();
+			pa1.setName("Customer Experience");
+			pa1.setDescription("Customer-facing applications and services");
+			productAreaRepository.save(pa1);
+
+			ProductArea pa2 = new ProductArea();
+			pa2.setName("Identity & Security");
+			pa2.setDescription("Identity management and security services");
+			productAreaRepository.save(pa2);
+
+			ProductArea pa3 = new ProductArea();
+			pa3.setName("Data & Analytics");
+			pa3.setDescription("Data processing and analytics services");
+			productAreaRepository.save(pa3);
+		}
+
+		// Seed Roles if none exist
+		if (roleRepository.count() == 0) {
+			Role role1 = new Role();
+			role1.setName("AO");
+			role1.setDescription("Application Owner");
+			roleRepository.save(role1);
+
+			Role role2 = new Role();
+			role2.setName("AO Delegate");
+			role2.setDescription("Application Owner Delegate");
+			roleRepository.save(role2);
+
+			Role role3 = new Role();
+			role3.setName("Developer");
+			role3.setDescription("Software Developer");
+			roleRepository.save(role3);
+
+			Role role4 = new Role();
+			role4.setName("Product Owner");
+			role4.setDescription("Product Owner");
+			roleRepository.save(role4);
+		}
+
+		// Seed Teams if none exist
+		if (teamRepository.count() == 0) {
+			ProductArea customerExp = productAreaRepository.findByName("Customer Experience").orElse(null);
+			ProductArea identity = productAreaRepository.findByName("Identity & Security").orElse(null);
+			ProductArea data = productAreaRepository.findByName("Data & Analytics").orElse(null);
+
+			if (customerExp != null) {
+				Team team1 = new Team();
+				team1.setName("Customer Portal Team");
+				team1.setDescription("Team responsible for customer portal development");
+				team1.setProductArea(customerExp);
+				teamRepository.save(team1);
+
+				Team team2 = new Team();
+				team2.setName("Preferences Team");
+				team2.setDescription("Team responsible for user preferences");
+				team2.setProductArea(customerExp);
+				teamRepository.save(team2);
+			}
+
+			if (identity != null) {
+				Team team3 = new Team();
+				team3.setName("Identity Service Team");
+				team3.setDescription("Team responsible for identity management");
+				team3.setProductArea(identity);
+				teamRepository.save(team3);
+			}
+		}
+
+		// Seed Persons if none exist
+		if (personRepository.count() == 0) {
+			Person person1 = new Person();
+			person1.setFirstName("John");
+			person1.setLastName("Smith");
+			person1.setSid("JSMITH");
+			person1.setEmail("john.smith@example.com");
+			personRepository.save(person1);
+
+			Person person2 = new Person();
+			person2.setFirstName("Jane");
+			person2.setLastName("Doe");
+			person2.setSid("JDOE");
+			person2.setEmail("jane.doe@example.com");
+			personRepository.save(person2);
+
+			Person person3 = new Person();
+			person3.setFirstName("Bob");
+			person3.setLastName("Johnson");
+			person3.setSid("BJOHNSON");
+			person3.setEmail("bob.johnson@example.com");
+			personRepository.save(person3);
+		}
+
 		// Seed Applications if none exist
 		if (applicationRepository.count() == 0) {
+			ProductArea customerExp = productAreaRepository.findByName("Customer Experience").orElse(null);
+			ProductArea identity = productAreaRepository.findByName("Identity & Security").orElse(null);
+
 			Application app1 = new Application();
 			app1.setSealId("APP-00001");
 			app1.setName("Customer Portal");
@@ -40,6 +153,7 @@ public class DataInitializer implements CommandLineRunner {
 			app1.setOwningApg("Relationships");
 			app1.setCodeRepository("https://git.example.com/customer-portal");
 			app1.setCertificates("customer.example.com; portal.example.com");
+			app1.setProductArea(customerExp);
 			applicationRepository.save(app1);
 
 			Application app2 = new Application();
@@ -49,6 +163,7 @@ public class DataInitializer implements CommandLineRunner {
 			app2.setOwningApg("Identity");
 			app2.setCodeRepository("https://git.example.com/identity-service");
 			app2.setCertificates("id.example.com");
+			app2.setProductArea(identity);
 			applicationRepository.save(app2);
 
 			Application app3 = new Application();
@@ -58,6 +173,7 @@ public class DataInitializer implements CommandLineRunner {
 			app3.setOwningApg("Preferences");
 			app3.setCodeRepository("https://git.example.com/preferences-api");
 			app3.setCertificates("prefs.example.com");
+			app3.setProductArea(customerExp);
 			applicationRepository.save(app3);
 
 			// Seed a couple of certificates for each app

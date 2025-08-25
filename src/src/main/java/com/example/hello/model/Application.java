@@ -10,6 +10,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
@@ -40,6 +42,10 @@ public class Application {
 	 * Simple representation of certificates (comma-separated or free text)
 	 */
 	private String certificates;
+
+	@ManyToOne
+	@JoinColumn(name = "product_area_id")
+	private ProductArea productArea;
 
 	@OneToMany(mappedBy = "application")
 	@JsonManagedReference
@@ -98,6 +104,14 @@ public class Application {
 
 	public void setCertificates(String certificates) {
 		this.certificates = certificates;
+	}
+
+	public ProductArea getProductArea() {
+		return productArea;
+	}
+
+	public void setProductArea(ProductArea productArea) {
+		this.productArea = productArea;
 	}
 
 	public List<Certificate> getCertificateEntities() {

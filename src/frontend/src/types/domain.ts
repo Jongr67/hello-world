@@ -17,6 +17,7 @@ export type Application = {
   owningApg?: string;
   codeRepository?: string;
   certificates?: string;
+  productArea?: ProductArea;
 };
 
 export type Ticket = {
@@ -36,4 +37,60 @@ export type Certificate = {
   expirationDate?: string;
   application?: Application;
   applicationId?: number;
+};
+
+export type ProductArea = {
+  id: number;
+  name: string;
+  description?: string;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export type Team = {
+  id: number;
+  name: string;
+  description?: string;
+  productArea: ProductArea;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export type Person = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  sid: string;
+  email?: string;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export type Role = {
+  id: number;
+  name: string;
+  description?: string;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export type TeamMembership = {
+  id: number;
+  team: Team;
+  person: Person;
+  role: Role;
+  startDate?: string;
+  endDate?: string;
+  isPrimary?: boolean;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export type ApplicationTeam = {
+  id: number;
+  application: Application;
+  team: Team;
+  relationship: string;
+  createdDate?: string;
+  updatedDate?: string;
 };

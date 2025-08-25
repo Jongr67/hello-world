@@ -1,0 +1,74 @@
+erDiagram
+    ProductArea {
+        id BIGINT PK
+        name VARCHAR(100) UK
+        description TEXT
+        created_date DATE
+        updated_date DATE
+    }
+
+    Application {
+        id BIGINT PK
+        name VARCHAR(100)
+        description TEXT
+        product_area_id BIGINT FK
+        created_date DATE
+        updated_date DATE
+    }
+
+    Team {
+        id BIGINT PK
+        name VARCHAR(100)
+        description TEXT
+        product_area_id BIGINT FK
+        created_date DATE
+        updated_date DATE
+    }
+
+    Person {
+        id BIGINT PK
+        first_name VARCHAR(100)
+        last_name VARCHAR(100)
+        SID VARCHAR(50) UK
+        email VARCHAR(255)
+        created_date DATE
+        updated_date DATE
+    }
+
+    Role {
+        id BIGINT PK
+        name VARCHAR(50) UK
+        description TEXT
+        created_date DATE
+        updated_date DATE
+    }
+
+    ApplicationTeam {
+        application_id BIGINT FK
+        team_id BIGINT FK
+        relationship VARCHAR(50)
+        created_date DATE
+        updated_date DATE
+    }
+
+    TeamMembership {
+        team_id BIGINT FK
+        person_id BIGINT FK
+        role_id BIGINT FK
+        start_date DATE
+        end_date DATE
+        is_primary BOOLEAN
+        created_date DATE
+        updated_date DATE
+    }
+
+    ProductArea ||--o{ Application : "has"
+    ProductArea ||--o{ Team : "has"
+    Application }o--o{ Team : "mapped via"
+    Team }o--o{ Person : "has members"
+    Person }o--o{ Role : "has roles"
+    ApplicationTeam }|--|| Application : "references"
+    ApplicationTeam }|--|| Team : "references"
+    TeamMembership }|--|| Team : "references"
+    TeamMembership }|--|| Person : "references"
+    TeamMembership }|--|| Role : "references"

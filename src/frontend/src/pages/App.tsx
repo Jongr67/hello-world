@@ -12,18 +12,11 @@ import { Application, Finding } from '../types/domain';
 import { api } from '../services/api';
 import ApplicationsSection from '../components/ApplicationsSection';
 import CertificatesSection from '../components/CertificatesSection';
+import { TeamsSection } from '../components/TeamsSection';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-type Application = {
-  id: number;
-  sealId: string;
-  name: string;
-  platform?: string;
-  owningApg?: string;
-  codeRepository?: string;
-  certificates?: string;
-};
+
 
 type Ticket = {
   id: number;
@@ -34,7 +27,7 @@ type Ticket = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'findings' | 'applications' | 'certificates' | 'tickets'>('findings');
+  const [activeTab, setActiveTab] = useState<'findings' | 'applications' | 'certificates' | 'tickets' | 'teams'>('findings');
   const [tickets, setTickets] = useState<Array<{
     id: number;
     jiraKey?: string;
@@ -500,6 +493,7 @@ export default function App() {
             <button onClick={() => setActiveTab('applications')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'applications' ? '#d1d5db' : 'transparent'), background: activeTab === 'applications' ? '#fff' : 'transparent', cursor: 'pointer' }}>Applications</button>
             <button onClick={() => setActiveTab('certificates')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'certificates' ? '#d1d5db' : 'transparent'), background: activeTab === 'certificates' ? '#fff' : 'transparent', cursor: 'pointer' }}>Certificates</button>
             <button onClick={() => setActiveTab('tickets')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'tickets' ? '#d1d5db' : 'transparent'), background: activeTab === 'tickets' ? '#fff' : 'transparent', cursor: 'pointer' }}>Resolver Tickets</button>
+            <button onClick={() => setActiveTab('teams')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'teams' ? '#d1d5db' : 'transparent'), background: activeTab === 'teams' ? '#fff' : 'transparent', cursor: 'pointer' }}>Teams</button>
           </div>
         </div>
 
@@ -676,6 +670,10 @@ export default function App() {
 
         {activeTab === 'tickets' && (
           <TicketsSection applications={applications} tickets={tickets} loading={loading} onRefreshTickets={refreshGlobalTickets} />
+        )}
+
+        {activeTab === 'teams' && (
+          <TeamsSection />
         )}
       </div>
     </div>

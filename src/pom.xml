@@ -64,6 +64,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.example.hello.HelloApplication</mainClass>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.github.eirslett</groupId>
@@ -79,7 +82,7 @@
                             <goal>install-node-and-npm</goal>
                         </goals>
                         <configuration>
-                            <nodeVersion>v20.17.0</nodeVersion>
+                            <nodeVersion>v20.19.3</nodeVersion>
                         </configuration>
                     </execution>
                     <execution>
