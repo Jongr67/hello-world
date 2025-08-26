@@ -23,18 +23,97 @@ type Props = {
 };
 
 export default function FindingsSection({ findings, summary, loading, ticketsByFindingId, ticketsListByFindingId, onOpenTicketFlyout, onRefreshFindings }: Props) {
+  const [filteredApg, setFilteredApg] = React.useState<string | null>(null);
+  const [filteredDueWindow, setFilteredDueWindow] = React.useState<string | null>(null);
   const pieData = React.useMemo(() => {
     const labels = Object.keys(summary);
     const values = Object.values(summary);
     const palette = ['#6366f1','#22c55e','#f59e0b','#ef4444','#06b6d4','#84cc16','#a855f7','#fb7185','#14b8a6','#eab308'];
-    return { labels, datasets: [{ data: values, backgroundColor: labels.map((_, i) => palette[i % palette.length]) }] };
+    return { 
+      labels, 
+      datasets: [{ 
+        data: values, 
+        backgroundColor: labels.map((_, i) => palette[i % palette.length]) 
+      }] 
+    };
   }, [summary]);
+
+  const filteredFindings = React.useMemo(() => {
+    let filtered = findings;
+    
+    if (filteredApg) {
+      filtered = filtered.filter(f => f.assignedApg === filteredApg);
+    }
+    
+    if (filteredDueWindow) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      filtered = filtered.filter(f => {
+        const d = (f.targetDate || '').toString();
+        if (!d) return false;
+        const target = new Date(d + 'T00:00:00');
+        const diffMs = target.getTime() - today.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        switch (filteredDueWindow) {
+          case 'Overdue':
+            return diffDays < 0;
+          case '≤30 days':
+            return diffDays >= 0 && diffDays <= 30;
+          case '31–60 days':
+            return diffDays > 30 && diffDays <= 60;
+          case '61–90 days':
+            return diffDays > 60 && diffDays <= 90;
+          default:
+            return false;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [findings, filteredApg, filteredDueWindow]);
+
+  const handleApgPieChartClick = (event: any, elements: any[]) => {
+    if (elements.length > 0) {
+      const index = elements[0].index;
+      const apg = Object.keys(summary)[index];
+      setFilteredApg(apg);
+      setFilteredDueWindow(null); // Clear due window filter when APG is selected
+    }
+  };
+
+  const handleDueWindowPieChartClick = (event: any, elements: any[]) => {
+    if (elements.length > 0) {
+      const index = elements[0].index;
+      const dueWindow = ['Overdue', '≤30 days', '31–60 days', '61–90 days'][index];
+      setFilteredDueWindow(dueWindow);
+      // Don't clear APG filter - allow both filters to be active
+    }
+  };
+
+  const clearApgFilter = () => {
+    setFilteredApg(null);
+  };
+
+  const clearDueWindowFilter = () => {
+    setFilteredDueWindow(null);
+  };
+
+  const clearAllFilters = () => {
+    setFilteredApg(null);
+    setFilteredDueWindow(null);
+  };
 
   const dueBuckets = React.useMemo(() => {
     const counts = { Overdue: 0, '≤30 days': 0, '31–60 days': 0, '61–90 days': 0 };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    for (const f of findings) {
+    
+    // Use filtered findings instead of all findings
+    const findingsToProcess = filteredApg ? findings.filter(f => f.assignedApg === filteredApg) : findings;
+    
+    for (const f of findingsToProcess) {
       const d = (f.targetDate || '').toString();
       if (!d) continue;
       const target = new Date(d + 'T00:00:00');
@@ -46,7 +125,7 @@ export default function FindingsSection({ findings, summary, loading, ticketsByF
       else if (diffDays <= 90) counts['61–90 days'] += 1;
     }
     return counts;
-  }, [findings]);
+  }, [findings, filteredApg]);
 
   const duePieData = React.useMemo(() => {
     const labels = ['Overdue', '≤30 days', '31–60 days', '61–90 days'];
@@ -61,6 +140,22 @@ export default function FindingsSection({ findings, summary, loading, ticketsByF
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ marginTop: 0 }}>Findings by APG</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                         {(filteredApg || filteredDueWindow) && (
+               <button 
+                 onClick={clearAllFilters}
+                 style={{ 
+                   padding: '6px 10px', 
+                   borderRadius: 6, 
+                   border: '1px solid #2563eb', 
+                   background: '#2563eb', 
+                   color: '#fff', 
+                   cursor: 'pointer',
+                   fontSize: 12
+                 }}
+               >
+                 Show All
+               </button>
+             )}
             <a href="/api/findings/export" style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', textDecoration: 'none' }} title="Download Findings Excel">Export</a>
             <label style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
               Import
@@ -86,18 +181,59 @@ export default function FindingsSection({ findings, summary, loading, ticketsByF
           <p style={{ color: '#6b7280', fontSize: 12 }}>Loading chart…</p>
         ) : (
           <div style={{ height: 260 }}>
-            <Pie data={pieData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const } } }} />
+            <Pie 
+              data={pieData} 
+              options={{ 
+                maintainAspectRatio: false, 
+                plugins: { legend: { position: 'bottom' as const } },
+                onClick: handleApgPieChartClick
+              }} 
+            />
           </div>
         )}
       </div>
 
       <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-        <h3 style={{ marginTop: 0 }}>Findings by Due Window</h3>
+                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+           <h3 style={{ marginTop: 0 }}>
+             Findings by Due Window
+             {filteredApg && (
+               <span style={{ fontSize: 14, color: '#6b7280', fontWeight: 'normal' }}>
+                 {' '}(for APG: {filteredApg})
+               </span>
+             )}
+           </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {(filteredApg || filteredDueWindow) && (
+              <button 
+                onClick={clearAllFilters}
+                style={{ 
+                  padding: '6px 10px', 
+                  borderRadius: 6, 
+                  border: '1px solid #2563eb', 
+                  background: '#2563eb', 
+                  color: '#fff', 
+                  cursor: 'pointer',
+                  fontSize: 12
+                }}
+              >
+                Show All
+              </button>
+            )}
+          </div>
+        </div>
         {loading ? (
           <p style={{ color: '#6b7280', fontSize: 12 }}>Loading chart…</p>
         ) : (
           <div style={{ height: 260 }}>
-            <Pie data={duePieData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom' as const } } }} />
+            <Pie 
+              data={duePieData} 
+              options={{ 
+                maintainAspectRatio: false, 
+                plugins: { legend: { position: 'bottom' as const } },
+                onClick: handleDueWindowPieChartClick
+              }} 
+            />
           </div>
         )}
         <div style={{ marginTop: 8, color: '#6b7280', fontSize: 12 }}>
@@ -106,7 +242,21 @@ export default function FindingsSection({ findings, summary, loading, ticketsByF
       </div>
 
       <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-        <h3 style={{ marginTop: 0 }}>Current Findings</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ marginTop: 0 }}>
+            Current Findings
+            {filteredApg && (
+              <span style={{ fontSize: 14, color: '#6b7280', fontWeight: 'normal' }}>
+                {' '}(Filtered by APG: {filteredApg})
+              </span>
+            )}
+            {filteredDueWindow && (
+              <span style={{ fontSize: 14, color: '#6b7280', fontWeight: 'normal' }}>
+                {' '}(Filtered by Due Window: {filteredDueWindow})
+              </span>
+            )}
+          </h3>
+        </div>
         {loading ? (
           <p style={{ color: '#6b7280', fontSize: 12 }}>Loading findings…</p>
         ) : (
@@ -120,12 +270,18 @@ export default function FindingsSection({ findings, summary, loading, ticketsByF
               <div>Resolver Ticket</div>
               <div>Created</div>
             </div>
-            {findings.length === 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
-                <div style={{ color: '#6b7280', fontSize: 12 }}>No findings</div>
-              </div>
-            )}
-            {findings.map((f) => (
+                         {filteredFindings.length === 0 && (
+               <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                 <div style={{ color: '#6b7280', fontSize: 12 }}>
+                   {filteredApg && filteredDueWindow ? 
+                    `No findings for APG: ${filteredApg} and Due Window: ${filteredDueWindow}` :
+                    filteredApg ? `No findings for APG: ${filteredApg}` : 
+                    filteredDueWindow ? `No findings for Due Window: ${filteredDueWindow}` : 
+                    'No findings'}
+                 </div>
+               </div>
+             )}
+            {filteredFindings.map((f) => (
               <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr 160px 140px 140px 160px 160px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                 <div>#{f.id}</div>
                 <div>

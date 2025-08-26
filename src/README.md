@@ -1,30 +1,33 @@
 ## Overview
 
-This project is a simple Security Dashboard that tracks FARM findings and the applications they affect. It provides a React-based UI backed by a Spring Boot API with H2 as the data store.
+This project is a comprehensive Security Dashboard that tracks FARM findings, applications, certificates, resolver tickets, and team management. It provides a React-based UI backed by a Spring Boot API with H2 as the data store.
 
 - **Frontend**: React 18 + Vite (dev server at `http://localhost:5173` with proxy to the backend). UI code is modular:
-  - `frontend/src/components/FindingsSection.tsx`
-  - `frontend/src/components/ApplicationsSection.tsx`
-  - `frontend/src/components/CertificatesSection.tsx`
-  - `frontend/src/components/TicketsSection.tsx`
+  - `frontend/src/components/FindingsSection.tsx` - Interactive pie charts with filtering
+  - `frontend/src/components/ApplicationsSection.tsx` - Application management with findings flyout
+  - `frontend/src/components/CertificatesSection.tsx` - Certificate management
+  - `frontend/src/components/TicketsSection.tsx` - Global ticket management
+  - `frontend/src/components/TeamsSection.tsx` - Team and personnel management
+  - `frontend/src/components/TicketFlyout.tsx` - Ticket management flyout
+  - `frontend/src/components/FindingsFlyout.tsx` - Findings display flyout
   - Shared types: `frontend/src/types/domain.ts`
   - API helpers: `frontend/src/services/api.ts`
 - **Backend**: Spring Boot 3 (Java 17), Spring Data JPA, H2 database
 - **Database**: H2 file on disk (data persisted under `./data/hello.*`)
 
-The dashboard shows a pie chart of findings by APG, a list of current findings, and tabs for Applications, Certificates, and Resolver Tickets. Findings are linked to applications via a shared unique key: `Application.sealId` ↔ `FarmFinding.applicationSealId`.
+The dashboard provides comprehensive security management with interactive filtering, team organization, and detailed tracking of findings, applications, and their relationships.
 
 ## Architecture
 
 - **Backend** (`src/main/java/com/example/hello`)
   - `HelloApplication` — Spring Boot entry point
-  - `controllers` — REST controllers (findings, applications, certificates, resolver tickets, hello/count)
-  - `service` — business logic for findings, resolver tickets, applications, certificates, hit counter
-  - `model` — JPA entities: `FarmFinding`, `ResolverTicket` (with `jiraUrl`, `status`), `Application`, `Certificate`, `HitCounter`
+  - `controllers` — REST controllers (findings, applications, certificates, resolver tickets, teams, product areas, people, roles, hello/count)
+  - `service` — business logic for all entities
+  - `model` — JPA entities: `FarmFinding`, `ResolverTicket`, `Application`, `Certificate`, `HitCounter`, `ProductArea`, `Team`, `Person`, `Role`, `ApplicationTeam`, `TeamMembership`
   - `repository` — Spring Data repositories
-  - `DataInitializer` — seeds demo data for Applications, FARM findings, and Certificates
+  - `DataInitializer` — seeds demo data for all entities
 - **Frontend** (`frontend/`)
-  - `src/pages/App.tsx` — app shell that composes modular sections (Findings, Applications, Certificates, Resolver Tickets)
+  - `src/pages/App.tsx` — app shell with tabbed navigation
   - Vite dev proxy forwards `/api`, `/hello`, `/h2-console` to the backend (`vite.config.ts`)
 - **Database**
   - Configured in `src/main/resources/application.properties`
@@ -33,27 +36,49 @@ The dashboard shows a pie chart of findings by APG, a list of current findings, 
 
 ## Features
 
-- **Findings dashboard**
-  - Pie chart of findings by APG
-  - Current findings table: ID, Description, Application Seal ID, Severity/Criticality, Assigned APG, Resolver Ticket(s), Created date
-  - Resolver ticket column shows Jira keys if present; otherwise a warning icon
-  - “Manage Tickets” flyout per finding to add/delete Jira resolver tickets
-- **Applications management**
-  - Tab at the top to switch to the Applications view
-  - CRUD table with columns: App Name, Platform, Owning APG, Code Repository, Certificates, Farm Findings, and Seal ID (link key)
-  - Create/Edit/Delete applications from the UI
-  - Findings count per application computed by matching `applicationSealId` to the application `sealId`
-- **Certificates**
-  - Tab to view certificates table (CN, Serial, Expiration Date, Application)
-  - Create via form; edit inline, including changing associated application
-  - Certificates are stored in H2 and associated 1:N to Applications
-  - REST API supports create/update/delete and listing by application
-- **Resolver Tickets**
-  - Global tab listing all resolver tickets (Jira Key/URL, APG, Status, Finding ID, Application)
-  - Tickets update immediately across tabs when added/removed
-- **Utilities**
-  - Simple `GET /hello` endpoint that increments and returns a hit counter
-  - OpenAPI UI (Swagger) at `http://localhost:8080/swagger-ui/index.html`
+### **Findings Dashboard**
+- **Interactive Pie Charts**:
+  - "Findings by APG" - click to filter findings by specific APG
+  - "Findings by Due Window" - click to filter by due date ranges (Overdue, ≤30 days, 31–60 days, 61–90 days)
+  - Dynamic filtering - APG filter affects due window chart counts
+  - "Show All" buttons to clear filters
+- **Current Findings Table**: ID, Description, Application Seal ID, Severity/Criticality, Assigned APG, Resolver Ticket(s), Created date
+- **Excel Export/Import**: Bulk operations for findings data
+- **Filtered Views**: Clear indicators when filters are active
+
+### **Applications Management**
+- **Applications Table**: App Name, Platform, Owning APG, Code Repository, Certificates, Farm Findings count
+- **Interactive Findings Count**: Click to open findings flyout for that application
+- **CRUD Operations**: Create/Edit/Delete applications
+- **Findings Flyout**: Dedicated component showing all findings for selected application with ticket management
+
+### **Certificates Management**
+- **Certificates Table**: CN, Serial, Expiration Date, Application
+- **CRUD Operations**: Create, edit, delete certificates
+- **Application Association**: Link certificates to applications
+- **Dedicated Tab**: Separate management interface
+
+### **Resolver Tickets**
+- **Global Tickets View**: All tickets across all findings
+- **Ticket Management Flyout**: Add/remove tickets for specific findings
+- **Excel Export/Import**: Bulk operations for ticket data
+- **Real-time Updates**: Changes reflect immediately across all views
+
+### **Teams Management** (NEW)
+- **Product Areas**: Organizational units for applications
+- **Teams**: Support teams within product areas
+- **People**: Individual team members with SID (Security ID)
+- **Roles**: Team member roles (e.g., Developer, Lead, Manager)
+- **Application-Team Relationships**: Link applications to support teams
+- **Team Memberships**: Track who is on which team with what role
+- **Comprehensive CRUD**: Full management of all team entities
+
+### **Interactive Features**
+- **Pie Chart Filtering**: Click charts to filter data, see "Show All" buttons
+- **Flyout Components**: Dedicated overlays for detailed management
+- **Real-time Updates**: Changes propagate across all views
+- **Excel Integration**: Export and import for bulk operations
+- **Responsive Design**: Modern UI with consistent styling
 
 ## Quick start
 
@@ -92,10 +117,11 @@ spring.jpa.hibernate.ddl-auto=update
 spring.web.resources.add-mappings=true
 ```
 
-## Data model
+## Data Model
 
-### Application
+### Core Entities
 
+#### Application
 ```json
 {
   "id": 1,
@@ -104,12 +130,12 @@ spring.web.resources.add-mappings=true
   "platform": "Web",
   "owningApg": "Relationships",
   "codeRepository": "https://git.example.com/customer-portal",
-  "certificates": "customer.example.com; portal.example.com"
+  "certificates": "customer.example.com; portal.example.com",
+  "productArea": { "id": 1, "name": "Customer Experience" }
 }
 ```
 
-### FarmFinding
-
+#### FarmFinding
 ```json
 {
   "id": 42,
@@ -119,32 +145,23 @@ spring.web.resources.add-mappings=true
   "criticality": "Medium",
   "targetDate": "2025-03-01",
   "assignedApg": "Identity",
-  "resolverTickets": [
-    {
-      "id": 10,
-      "jiraKey": "SEC-123",
-      "jiraUrl": "https://jira.example.com/browse/SEC-123",
-      "apg": "Identity",
-      "status": "In Progress"
-    }
-  ]
+  "createdDate": "2025-01-15T10:30:00"
 }
 ```
 
-### ResolverTicket
-
+#### ResolverTicket
 ```json
 {
   "id": 10,
   "jiraKey": "SEC-123",
   "jiraUrl": "https://jira.example.com/browse/SEC-123",
   "apg": "Identity",
-  "status": "In Progress"
+  "status": "In Progress",
+  "finding": { "id": 42 }
 }
 ```
 
-### Certificate
-
+#### Certificate
 ```json
 {
   "id": 7,
@@ -155,9 +172,85 @@ spring.web.resources.add-mappings=true
 }
 ```
 
+### Team Management Entities
+
+#### ProductArea
+```json
+{
+  "id": 1,
+  "name": "Customer Experience",
+  "description": "Customer-facing applications and services",
+  "createdDate": "2025-01-01T00:00:00",
+  "updatedDate": "2025-01-01T00:00:00"
+}
+```
+
+#### Team
+```json
+{
+  "id": 1,
+  "name": "Customer Portal Team",
+  "description": "Maintains customer portal applications",
+  "productArea": { "id": 1, "name": "Customer Experience" },
+  "createdDate": "2025-01-01T00:00:00",
+  "updatedDate": "2025-01-01T00:00:00"
+}
+```
+
+#### Person
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "lastName": "Doe",
+  "sid": "JDOE123",           // unique Security ID
+  "email": "john.doe@example.com",
+  "createdDate": "2025-01-01T00:00:00",
+  "updatedDate": "2025-01-01T00:00:00"
+}
+```
+
+#### Role
+```json
+{
+  "id": 1,
+  "name": "Developer",        // unique role name
+  "description": "Software developer role",
+  "createdDate": "2025-01-01T00:00:00",
+  "updatedDate": "2025-01-01T00:00:00"
+}
+```
+
+#### ApplicationTeam (Many-to-Many)
+```json
+{
+  "id": 1,
+  "application": { "id": 1, "name": "Customer Portal" },
+  "team": { "id": 1, "name": "Customer Portal Team" },
+  "relationship": "Primary Support",
+  "createdDate": "2025-01-01T00:00:00",
+  "updatedDate": "2025-01-01T00:00:00"
+}
+```
+
+#### TeamMembership (Many-to-Many-to-Many)
+```json
+{
+  "id": 1,
+  "team": { "id": 1, "name": "Customer Portal Team" },
+  "person": { "id": 1, "firstName": "John", "lastName": "Doe" },
+  "role": { "id": 1, "name": "Developer" },
+  "startDate": "2025-01-01",
+  "endDate": null,
+  "isPrimary": true,
+  "createdDate": "2025-01-01T00:00:00",
+  "updatedDate": "2025-01-01T00:00:00"
+}
+```
+
 ## ER Diagram
 
-![ER Diagram](docs/er.svg)
+![ER Diagram](docs/er.mmd)
 
 ## REST APIs
 
@@ -171,21 +264,6 @@ Base URL: `http://localhost:8080`
 - `PUT /api/applications/{id}` — update
 - `DELETE /api/applications/{id}` — delete
 
-Example create:
-
-```bash
-curl -X POST "http://localhost:8080/api/applications" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sealId": "APP-00005",
-    "name": "Payments API",
-    "platform": "Service",
-    "owningApg": "Servicing",
-    "codeRepository": "https://git.example.com/payments-api",
-    "certificates": "payments.example.com"
-  }'
-```
-
 ### FARM findings
 
 - `GET /api/findings` — list findings
@@ -195,23 +273,8 @@ curl -X POST "http://localhost:8080/api/applications" \
 - `DELETE /api/findings/{id}` — delete finding
 
 Excel:
-- `GET /api/findings/export` — download findings.xlsx (id, description, applicationSealId, severity, criticality, targetDate, assignedApg, createdDate)
-- `POST /api/findings/import` — upload findings.xlsx to bulk upsert (id optional; createdDate managed by server)
-
-Example create:
-
-```bash
-curl -X POST "http://localhost:8080/api/findings" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "description": "New issue",
-    "applicationSealId": "APP-00001",
-    "severity": "Low",
-    "criticality": "Low",
-    "targetDate": "2025-06-01",
-    "assignedApg": "Relationships"
-  }'
-```
+- `GET /api/findings/export` — download findings.xlsx
+- `POST /api/findings/import` — upload findings.xlsx to bulk upsert
 
 ### Resolver tickets (nested under a finding)
 
@@ -220,35 +283,69 @@ curl -X POST "http://localhost:8080/api/findings" \
 - `PUT /api/findings/{findingId}/tickets/{ticketId}` — update a ticket
 - `DELETE /api/findings/{findingId}/tickets/{ticketId}` — delete a ticket
 
-Example add ticket:
-
-```bash
-curl -X POST "http://localhost:8080/api/findings/42/tickets" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jiraKey": "SEC-456",
-    "jiraUrl": "https://jira.example.com/browse/SEC-456",
-    "apg": "Identity",
-    "status": "To Do"
-  }'
-```
-
 ### Resolver tickets (global)
 
-- `GET /api/tickets` — list all resolver tickets with summary fields:
-  - `id`, `jiraKey`, `jiraUrl`, `apg`, `status`, `findingId`, `applicationSealId`
-
-Excel:
-- `GET /api/tickets/export` — download resolver_tickets.xlsx (id, findingId, applicationSealId, jiraKey, jiraUrl, apg, status)
-- `POST /api/tickets/import` — upload resolver_tickets.xlsx to bulk upsert (matches by id when provided)
+- `GET /api/tickets` — list all resolver tickets
+- `GET /api/tickets/export` — download resolver_tickets.xlsx
+- `POST /api/tickets/import` — upload resolver_tickets.xlsx
 
 ### Certificates
 
 - `GET /api/certificates` — list all certificates
 - `GET /api/certificates/application/{applicationId}` — list certificates for an application
-- `POST /api/certificates/application/{applicationId}` — create and associate a certificate to an application
+- `POST /api/certificates/application/{applicationId}` — create and associate a certificate
 - `PUT /api/certificates/{id}` — update a certificate
 - `DELETE /api/certificates/{id}` — delete a certificate
+
+### Team Management APIs
+
+#### Product Areas
+- `GET /api/product-areas` — list all
+- `GET /api/product-areas/{id}` — get by ID
+- `POST /api/product-areas` — create
+- `PUT /api/product-areas/{id}` — update
+- `DELETE /api/product-areas/{id}` — delete
+
+#### Teams
+- `GET /api/teams` — list all
+- `GET /api/teams/{id}` — get by ID
+- `GET /api/teams/product-area/{productAreaId}` — list by product area
+- `POST /api/teams` — create
+- `PUT /api/teams/{id}` — update
+- `DELETE /api/teams/{id}` — delete
+
+#### People
+- `GET /api/people` — list all
+- `GET /api/people/{id}` — get by ID
+- `GET /api/people/sid/{sid}` — get by SID
+- `POST /api/people` — create
+- `PUT /api/people/{id}` — update
+- `DELETE /api/people/{id}` — delete
+
+#### Roles
+- `GET /api/roles` — list all
+- `GET /api/roles/{id}` — get by ID
+- `POST /api/roles` — create
+- `PUT /api/roles/{id}` — update
+- `DELETE /api/roles/{id}` — delete
+
+#### Application Teams
+- `GET /api/application-teams` — list all
+- `GET /api/application-teams/{id}` — get by ID
+- `GET /api/application-teams/application/{applicationId}` — list by application
+- `GET /api/application-teams/team/{teamId}` — list by team
+- `POST /api/application-teams` — create
+- `PUT /api/application-teams/{id}` — update
+- `DELETE /api/application-teams/{id}` — delete
+
+#### Team Memberships
+- `GET /api/team-memberships` — list all
+- `GET /api/team-memberships/{id}` — get by ID
+- `GET /api/team-memberships/team/{teamId}` — list by team
+- `GET /api/team-memberships/person/{personId}` — list by person
+- `POST /api/team-memberships` — create
+- `PUT /api/team-memberships/{id}` — update
+- `DELETE /api/team-memberships/{id}` — delete
 
 ### Utility
 
@@ -268,15 +365,43 @@ Controllers enable CORS for the Vite dev server origin:
 
 ## Seeding
 
-`DataInitializer` seeds:
+`DataInitializer` seeds comprehensive demo data:
 
-- 3 Applications (if none exist): `APP-00001`, `APP-00002`, `APP-00003`
-- FARM findings up to 50 total, distributed across APGs, with randomized severity/criticality/target dates
-- Example Certificates for seeded applications
+- **Applications**: 3 sample applications with different platforms and APGs
+- **FARM Findings**: Up to 50 findings distributed across APGs with randomized severity/criticality/target dates
+- **Certificates**: Sample certificates for seeded applications
+- **Product Areas**: 3 organizational units (Customer Experience, Backend Services, Infrastructure)
+- **Teams**: 6 teams across the product areas
+- **People**: 12 team members with unique SIDs
+- **Roles**: 4 roles (Developer, Lead, Manager, Architect)
+- **Application Teams**: Relationships between applications and support teams
+- **Team Memberships**: Team member assignments with roles and primary indicators
+
+## Interactive Features
+
+### Pie Chart Filtering
+- **APG Chart**: Click any slice to filter findings by that APG
+- **Due Window Chart**: Click any slice to filter by due date range
+- **Dynamic Updates**: APG filter affects due window chart counts
+- **Combined Filtering**: Can filter by both APG and due window simultaneously
+- **Visual Feedback**: Charts show filter status and "Show All" buttons
+
+### Flyout Components
+- **Findings Flyout**: Click application findings count to see all findings for that application
+- **Ticket Flyout**: Manage tickets for specific findings with add/delete functionality
+- **Real-time Updates**: Changes in flyouts reflect immediately across all views
+
+### Excel Integration
+- **Export**: Download current data as Excel files
+- **Import**: Bulk upload data from Excel files
+- **Supported**: Findings, Tickets, and all team management entities
 
 ## Development notes
 
 - The Vite dev server proxies `/api`, `/hello`, and `/h2-console` to `http://localhost:8080` (see `frontend/vite.config.ts`).
 - On `mvn package`, the frontend is built and copied into the backend `static/` so the Spring Boot JAR serves the UI directly.
+- All components are modular and reusable with clear separation of concerns.
+- The application supports comprehensive team management with full CRUD operations.
+- Interactive filtering provides powerful data exploration capabilities.
 
 

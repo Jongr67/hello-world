@@ -66,4 +66,45 @@ export const api = {
     const res = await fetch(`/api/team-memberships/team/${teamId}`);
     return json<TeamMembership[]>(res);
   },
+
+  // Application Teams
+  async getApplicationTeams(): Promise<ApplicationTeam[]> {
+    const res = await fetch('/api/application-teams');
+    return json<ApplicationTeam[]>(res);
+  },
+
+  async getApplicationTeamsByApplication(applicationId: number): Promise<ApplicationTeam[]> {
+    const res = await fetch(`/api/application-teams/application/${applicationId}`);
+    return json<ApplicationTeam[]>(res);
+  },
+
+  async getApplicationTeamsByTeam(teamId: number): Promise<ApplicationTeam[]> {
+    const res = await fetch(`/api/application-teams/team/${teamId}`);
+    return json<ApplicationTeam[]>(res);
+  },
+
+  async createApplicationTeam(applicationTeam: ApplicationTeam): Promise<ApplicationTeam> {
+    const res = await fetch('/api/application-teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(applicationTeam),
+    });
+    return json<ApplicationTeam>(res);
+  },
+
+  async updateApplicationTeam(id: number, applicationTeam: ApplicationTeam): Promise<ApplicationTeam> {
+    const res = await fetch(`/api/application-teams/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(applicationTeam),
+    });
+    return json<ApplicationTeam>(res);
+  },
+
+  async deleteApplicationTeam(id: number): Promise<void> {
+    const res = await fetch(`/api/application-teams/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  },
 };

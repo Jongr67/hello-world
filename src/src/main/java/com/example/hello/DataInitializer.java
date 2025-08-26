@@ -15,6 +15,8 @@ import com.example.hello.model.ProductArea;
 import com.example.hello.model.Team;
 import com.example.hello.model.Person;
 import com.example.hello.model.Role;
+import com.example.hello.model.TeamMembership;
+import com.example.hello.model.ApplicationTeam;
 import com.example.hello.repository.ApplicationRepository;
 import com.example.hello.repository.CertificateRepository;
 import com.example.hello.repository.FarmFindingRepository;
@@ -22,6 +24,8 @@ import com.example.hello.repository.ProductAreaRepository;
 import com.example.hello.repository.TeamRepository;
 import com.example.hello.repository.PersonRepository;
 import com.example.hello.repository.RoleRepository;
+import com.example.hello.repository.TeamMembershipRepository;
+import com.example.hello.repository.ApplicationTeamRepository;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -33,8 +37,10 @@ public class DataInitializer implements CommandLineRunner {
 	private final TeamRepository teamRepository;
 	private final PersonRepository personRepository;
 	private final RoleRepository roleRepository;
+	private final TeamMembershipRepository teamMembershipRepository;
+	private final ApplicationTeamRepository applicationTeamRepository;
 
-	public DataInitializer(FarmFindingRepository farmFindingRepository, ApplicationRepository applicationRepository, CertificateRepository certificateRepository, ProductAreaRepository productAreaRepository, TeamRepository teamRepository, PersonRepository personRepository, RoleRepository roleRepository) {
+	public DataInitializer(FarmFindingRepository farmFindingRepository, ApplicationRepository applicationRepository, CertificateRepository certificateRepository, ProductAreaRepository productAreaRepository, TeamRepository teamRepository, PersonRepository personRepository, RoleRepository roleRepository, TeamMembershipRepository teamMembershipRepository, ApplicationTeamRepository applicationTeamRepository) {
 		this.farmFindingRepository = farmFindingRepository;
 		this.applicationRepository = applicationRepository;
 		this.certificateRepository = certificateRepository;
@@ -42,6 +48,8 @@ public class DataInitializer implements CommandLineRunner {
 		this.teamRepository = teamRepository;
 		this.personRepository = personRepository;
 		this.roleRepository = roleRepository;
+		this.teamMembershipRepository = teamMembershipRepository;
+		this.applicationTeamRepository = applicationTeamRepository;
 	}
 
 	@Override
@@ -197,6 +205,99 @@ public class DataInitializer implements CommandLineRunner {
 			c3.setSerial("02B4-FFFF-3333");
 			c3.setExpirationDate(LocalDate.now().plusDays(365));
 			certificateRepository.save(c3);
+		}
+
+		// Seed Team Memberships if none exist
+		if (teamMembershipRepository.count() == 0) {
+			// Get some existing data for relationships
+			Person john = personRepository.findBySid("JSMITH").orElse(null);
+			Person jane = personRepository.findBySid("JDOE").orElse(null);
+			Person bob = personRepository.findBySid("BJOHNSON").orElse(null);
+			
+			Role aoRole = roleRepository.findByName("AO").orElse(null);
+			Role devRole = roleRepository.findByName("Developer").orElse(null);
+			Role poRole = roleRepository.findByName("Product Owner").orElse(null);
+			
+			Team customerPortalTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Customer Portal Team"))
+				.findFirst().orElse(null);
+			
+			Team preferencesTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Preferences Team"))
+				.findFirst().orElse(null);
+
+			if (john != null && aoRole != null && customerPortalTeam != null) {
+				TeamMembership tm1 = new TeamMembership();
+				tm1.setPerson(john);
+				tm1.setTeam(customerPortalTeam);
+				tm1.setRole(aoRole);
+				tm1.setStartDate(LocalDate.now().minusDays(365));
+				tm1.setIsPrimary(true);
+				teamMembershipRepository.save(tm1);
+			}
+
+			if (jane != null && devRole != null && customerPortalTeam != null) {
+				TeamMembership tm2 = new TeamMembership();
+				tm2.setPerson(jane);
+				tm2.setTeam(customerPortalTeam);
+				tm2.setRole(devRole);
+				tm2.setStartDate(LocalDate.now().minusDays(180));
+				tm2.setIsPrimary(false);
+				teamMembershipRepository.save(tm2);
+			}
+
+			if (bob != null && poRole != null && preferencesTeam != null) {
+				TeamMembership tm3 = new TeamMembership();
+				tm3.setPerson(bob);
+				tm3.setTeam(preferencesTeam);
+				tm3.setRole(poRole);
+				tm3.setStartDate(LocalDate.now().minusDays(90));
+				tm3.setIsPrimary(true);
+				teamMembershipRepository.save(tm3);
+			}
+		}
+
+		// Seed Application Team relationships if none exist
+		if (applicationTeamRepository.count() == 0) {
+			Application customerPortal = applicationRepository.findBySealId("APP-00001").orElse(null);
+			Application identityService = applicationRepository.findBySealId("APP-00002").orElse(null);
+			Application preferencesApi = applicationRepository.findBySealId("APP-00003").orElse(null);
+			
+			Team customerPortalTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Customer Portal Team"))
+				.findFirst().orElse(null);
+			
+			Team preferencesTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Preferences Team"))
+				.findFirst().orElse(null);
+			
+			Team identityTeam = teamRepository.findByProductArea_Name("Identity & Security").stream()
+				.filter(t -> t.getName().equals("Identity Service Team"))
+				.findFirst().orElse(null);
+
+			if (customerPortal != null && customerPortalTeam != null) {
+				ApplicationTeam at1 = new ApplicationTeam();
+				at1.setApplication(customerPortal);
+				at1.setTeam(customerPortalTeam);
+				at1.setRelationship("Primary Development");
+				applicationTeamRepository.save(at1);
+			}
+
+			if (preferencesApi != null && preferencesTeam != null) {
+				ApplicationTeam at2 = new ApplicationTeam();
+				at2.setApplication(preferencesApi);
+				at2.setTeam(preferencesTeam);
+				at2.setRelationship("Primary Development");
+				applicationTeamRepository.save(at2);
+			}
+
+			if (identityService != null && identityTeam != null) {
+				ApplicationTeam at3 = new ApplicationTeam();
+				at3.setApplication(identityService);
+				at3.setTeam(identityTeam);
+				at3.setRelationship("Primary Development");
+				applicationTeamRepository.save(at3);
+			}
 		}
 
 		// Backfill certificate entities from each application's certificates string without touching lazy collections

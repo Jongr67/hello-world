@@ -12,9 +12,10 @@ type Props = {
   deleteApp: (app: Application) => void;
   submitAppForm: (e: React.FormEvent) => void | Promise<void>;
   updateForm: (key: keyof Application, value: any) => void;
+  openFindingsFlyout: (app: Application) => void;
 };
 
-export default function ApplicationsSection({ applications, loading, findingsBySealId, editingApp, formApp, startCreateApp, startEditApp, deleteApp, submitAppForm, updateForm }: Props) {
+export default function ApplicationsSection({ applications, loading, findingsBySealId, editingApp, formApp, startCreateApp, startEditApp, deleteApp, submitAppForm, updateForm, openFindingsFlyout }: Props) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, alignItems: 'start' }}>
       <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
@@ -49,7 +50,19 @@ export default function ApplicationsSection({ applications, loading, findingsByS
                 <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.codeRepository || '-'}</div>
                 <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.certificates || '-'}</div>
                 <div>
-                  <button onClick={() => {/* keep behavior identical; this button remains in place for layout */}} style={{ padding: 0, margin: 0, border: 'none', background: 'none', color: '#2563eb', textDecoration: 'underline', cursor: (findingsBySealId[app.sealId] || 0) > 0 ? 'pointer' : 'default' }} title="View related findings">
+                  <button 
+                    onClick={() => openFindingsFlyout(app)} 
+                    style={{ 
+                      padding: 0, 
+                      margin: 0, 
+                      border: 'none', 
+                      background: 'none', 
+                      color: '#2563eb', 
+                      textDecoration: 'underline', 
+                      cursor: (findingsBySealId[app.sealId] || 0) > 0 ? 'pointer' : 'default' 
+                    }} 
+                    title="View related findings"
+                  >
                     {findingsBySealId[app.sealId] || 0}
                   </button>
                 </div>

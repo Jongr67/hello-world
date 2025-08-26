@@ -13,6 +13,8 @@ import { api } from '../services/api';
 import ApplicationsSection from '../components/ApplicationsSection';
 import CertificatesSection from '../components/CertificatesSection';
 import { TeamsSection } from '../components/TeamsSection';
+import { TicketFlyout } from '../components/TicketFlyout';
+import { FindingsFlyout } from '../components/FindingsFlyout';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -58,20 +60,13 @@ export default function App() {
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [formApp, setFormApp] = useState<Partial<Application>>({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '' });
 
-  const [flyoutApp, setFlyoutApp] = useState<Application | null>(null);
-  const [flyoutLoading, setFlyoutLoading] = useState(false);
-  const [flyoutError, setFlyoutError] = useState('');
-  const [flyoutItems, setFlyoutItems] = useState<Array<{ finding: Finding; tickets: Ticket[] }>>([]);
   const [editingTicketId, setEditingTicketId] = useState<number | null>(null);
   const [editingTicketFields, setEditingTicketFields] = useState<Partial<Ticket>>({});
   const [newTicketByFindingId, setNewTicketByFindingId] = useState<Record<number, Partial<Ticket>>>({});
 
-  // Dedicated per-finding ticket management flyout
+  // Flyout state
+  const [flyoutApp, setFlyoutApp] = useState<Application | null>(null);
   const [ticketFlyoutFinding, setTicketFlyoutFinding] = useState<Finding | null>(null);
-  const [ticketFlyoutLoading, setTicketFlyoutLoading] = useState(false);
-  const [ticketFlyoutError, setTicketFlyoutError] = useState('');
-  const [ticketFlyoutTickets, setTicketFlyoutTickets] = useState<Ticket[]>([]);
-  const [newTicket, setNewTicket] = useState<Partial<Ticket>>({ jiraKey: '', jiraUrl: '', apg: '', status: '' });
 
   useEffect(() => {
     async function loadData() {
@@ -244,103 +239,19 @@ export default function App() {
 
   function closeFlyout() {
     setFlyoutApp(null);
-    setFlyoutItems([]);
-    setFlyoutError('');
-    setFlyoutLoading(false);
   }
 
-  async function openFindingsFlyout(app: Application) {
+  function openFindingsFlyout(app: Application) {
     if ((findingsBySealId[app.sealId] || 0) === 0) return;
     setFlyoutApp(app);
-    setFlyoutLoading(true);
-    setFlyoutError('');
-    try {
-      const related = findings.filter(f => (f.applicationSealId || '').trim() === app.sealId);
-      const items = await Promise.all(
-        related.map(async (f) => {
-          try {
-            const res = await fetch(`/api/findings/${f.id}/tickets`);
-            if (!res.ok) throw new Error('Failed to fetch tickets');
-            const tickets: Ticket[] = await res.json();
-            return { finding: f, tickets: Array.isArray(tickets) ? tickets : [] };
-          } catch (e) {
-            return { finding: f, tickets: [] };
-          }
-        })
-      );
-      setFlyoutItems(items);
-    } catch (e: any) {
-      setFlyoutError(e.message || String(e));
-    } finally {
-      setFlyoutLoading(false);
-    }
   }
 
-  // Finding tickets: dedicated flyout
-  async function openTicketFlyout(finding: Finding) {
+  function openTicketFlyout(finding: Finding) {
     setTicketFlyoutFinding(finding);
-    setTicketFlyoutLoading(true);
-    setTicketFlyoutError('');
-    try {
-      const res = await fetch(`/api/findings/${finding.id}/tickets`);
-      if (!res.ok) throw new Error('Failed to fetch tickets');
-      const data: Ticket[] = await res.json();
-      setTicketFlyoutTickets(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      setTicketFlyoutError(e.message || String(e));
-    } finally {
-      setTicketFlyoutLoading(false);
-    }
   }
 
   function closeTicketFlyout() {
     setTicketFlyoutFinding(null);
-    setTicketFlyoutTickets([]);
-    setTicketFlyoutError('');
-    setNewTicket({ jiraKey: '', jiraUrl: '', apg: '', status: '' });
-  }
-
-  async function addTicketInTicketFlyout() {
-    if (!ticketFlyoutFinding) return;
-    try {
-      const res = await fetch(`/api/findings/${ticketFlyoutFinding.id}/tickets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jiraKey: newTicket.jiraKey || '',
-          jiraUrl: newTicket.jiraUrl || '',
-          apg: newTicket.apg || '',
-          status: newTicket.status || '',
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to add ticket');
-      const refreshed = await fetch(`/api/findings/${ticketFlyoutFinding.id}/tickets`);
-      if (refreshed.ok) {
-        const list: Ticket[] = await refreshed.json();
-        setTicketFlyoutTickets(Array.isArray(list) ? list : []);
-      }
-      await refreshGlobalTickets();
-      setNewTicket({ jiraKey: '', jiraUrl: '', apg: '', status: '' });
-    } catch (e: any) {
-      setTicketFlyoutError(e.message || String(e));
-    }
-  }
-
-  async function deleteTicketInTicketFlyout(ticketId: number) {
-    if (!ticketFlyoutFinding) return;
-    if (!confirm('Delete this ticket?')) return;
-    try {
-      const res = await fetch(`/api/findings/${ticketFlyoutFinding.id}/tickets/${ticketId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete ticket');
-      const refreshed = await fetch(`/api/findings/${ticketFlyoutFinding.id}/tickets`);
-      if (refreshed.ok) {
-        const list: Ticket[] = await refreshed.json();
-        setTicketFlyoutTickets(Array.isArray(list) ? list : []);
-      }
-      await refreshGlobalTickets();
-    } catch (e: any) {
-      setTicketFlyoutError(e.message || String(e));
-    }
   }
 
   function updateNewTicketField(findingId: number, key: keyof Ticket, value: string) {
@@ -348,14 +259,7 @@ export default function App() {
   }
 
   async function refreshTicketsForFinding(findingId: number) {
-    try {
-      const res = await fetch(`/api/findings/${findingId}/tickets`);
-      if (!res.ok) throw new Error('Failed to refresh tickets');
-      const tickets: Ticket[] = await res.json();
-      setFlyoutItems(items => items.map(it => it.finding.id === findingId ? { ...it, tickets } : it));
-    } catch (e) {
-      // keep old tickets if refresh fails
-    }
+    // This function is no longer needed as the flyout components handle their own data
   }
 
   async function addTicketForFinding(findingId: number) {
@@ -377,7 +281,7 @@ export default function App() {
       await refreshGlobalTickets();
       setNewTicketByFindingId(prev => ({ ...prev, [findingId]: {} }));
     } catch (e: any) {
-      setFlyoutError(e.message || String(e));
+      console.error('Error adding ticket:', e.message || String(e));
     }
   }
 
@@ -408,7 +312,7 @@ export default function App() {
       await refreshGlobalTickets();
       cancelEditTicket();
     } catch (e: any) {
-      setFlyoutError(e.message || String(e));
+      console.error('Error updating ticket:', e.message || String(e));
     }
   }
 
@@ -421,7 +325,7 @@ export default function App() {
       await refreshGlobalTickets();
       if (editingTicketId === ticketId) cancelEditTicket();
     } catch (e: any) {
-      setFlyoutError(e.message || String(e));
+      console.error('Error deleting ticket:', e.message || String(e));
     }
   }
 
@@ -531,125 +435,21 @@ export default function App() {
             deleteApp={deleteApp}
             submitAppForm={submitAppForm}
             updateForm={updateForm as any}
+            openFindingsFlyout={openFindingsFlyout}
           />
         )}
 
-        {ticketFlyoutFinding && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
-            <div onClick={closeTicketFlyout} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
-            <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 520, background: '#fff', boxShadow: '-4px 0 12px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: 16, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Manage Tickets for Finding</div>
-                  <div style={{ fontSize: 18, fontWeight: 600 }}>#{ticketFlyoutFinding.id}</div>
-                  {ticketFlyoutFinding.description && <div style={{ fontSize: 12, color: '#6b7280' }}>{ticketFlyoutFinding.description}</div>}
-                </div>
-                <button onClick={closeTicketFlyout} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Close</button>
-              </div>
-              <div style={{ padding: 16, overflow: 'auto' }}>
-                {ticketFlyoutError && <div style={{ color: '#b91c1c', marginBottom: 8 }}>Error: {ticketFlyoutError}</div>}
-                {ticketFlyoutLoading ? (
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>Loading…</div>
-                ) : (
-                  <>
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Add New Ticket</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <input value={newTicket.jiraKey as string || ''} onChange={e => setNewTicket(prev => ({ ...prev, jiraKey: e.target.value }))} placeholder="Jira Key" style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                        <input value={newTicket.jiraUrl as string || ''} onChange={e => setNewTicket(prev => ({ ...prev, jiraUrl: e.target.value }))} placeholder="Jira URL" style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                        <input value={newTicket.apg as string || ''} onChange={e => setNewTicket(prev => ({ ...prev, apg: e.target.value }))} placeholder="APG" style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                        <input value={newTicket.status as string || ''} onChange={e => setNewTicket(prev => ({ ...prev, status: e.target.value }))} placeholder="Status" style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
-                      </div>
-                      <div style={{ marginTop: 8 }}>
-                        <button onClick={addTicketInTicketFlyout} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #10b981', background: '#10b981', color: '#fff', cursor: 'pointer' }}>Add Ticket</button>
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Existing Tickets</div>
-                      {ticketFlyoutTickets.length === 0 ? (
-                        <div style={{ color: '#6b7280', fontSize: 12 }}>No tickets</div>
-                      ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr 120px 120px', gap: 8, fontSize: 14 }}>
-                          <div style={{ fontWeight: 600 }}>ID</div>
-                          <div style={{ fontWeight: 600 }}>Jira Key</div>
-                          <div style={{ fontWeight: 600 }}>Jira URL</div>
-                          <div style={{ fontWeight: 600 }}>APG</div>
-                          <div style={{ fontWeight: 600 }}>Status</div>
-                          {ticketFlyoutTickets.map(t => (
-                            <>
-                              <div>#{t.id}</div>
-                              <div>{t.jiraKey || '-'}</div>
-                              <div>{t.jiraUrl ? <a href={t.jiraUrl} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>{t.jiraUrl}</a> : '-'}</div>
-                              <div>{t.apg || '-'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span>{t.status || '-'}</span>
-                                <button onClick={() => deleteTicketInTicketFlyout(t.id)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #ef4444', background: '#fff', color: '#b91c1c', cursor: 'pointer' }}>Delete</button>
-                              </div>
-                            </>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        <TicketFlyout
+          finding={ticketFlyoutFinding}
+          onClose={closeTicketFlyout}
+          onRefreshGlobalTickets={refreshGlobalTickets}
+        />
 
-        {flyoutApp && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
-            <div onClick={closeFlyout} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
-            <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 480, background: '#fff', boxShadow: '-4px 0 12px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: 16, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>Application</div>
-                  <div style={{ fontSize: 18, fontWeight: 600 }}>{flyoutApp.name}</div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>{flyoutApp.sealId}</div>
-                </div>
-                <button onClick={closeFlyout} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>Close</button>
-              </div>
-              <div style={{ padding: 16, overflow: 'auto' }}>
-                {flyoutError && <div style={{ color: '#b91c1c', marginBottom: 8 }}>Error: {flyoutError}</div>}
-                {flyoutLoading ? (
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>Loading findings…</div>
-                ) : flyoutItems.length === 0 ? (
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>No related findings</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {flyoutItems.map(({ finding, tickets }) => (
-                      <div key={finding.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div style={{ fontWeight: 600 }}>#{finding.id} {finding.description || ''}</div>
-                          <div>
-                            <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 9999, fontSize: 12, background: '#eef2ff', color: '#3730a3' }}>{finding.severity || 'n/a'}</span>
-                            <span style={{ marginLeft: 8, display: 'inline-block', padding: '2px 8px', borderRadius: 9999, fontSize: 12, background: '#eef2ff', color: '#3730a3' }}>{finding.criticality || 'n/a'}</span>
-                          </div>
-                        </div>
-                        {finding.targetDate && <div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>Target: {finding.targetDate}</div>}
-                        <div style={{ marginTop: 10 }}>
-                          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Resolver Tickets</div>
-                          {tickets.length === 0 ? (
-                            <div style={{ color: '#6b7280', fontSize: 12 }}>No tickets</div>
-                          ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr 120px 120px 120px', gap: 8, fontSize: 14, fontWeight: 600 }}>
-                              <div>ID</div>
-                              <div>Jira Key</div>
-                              <div>Jira URL</div>
-                              <div>APG</div>
-                              <div>Status</div>
-                              <div>Actions</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        <FindingsFlyout
+          application={flyoutApp}
+          onClose={closeFlyout}
+          onOpenTicketFlyout={openTicketFlyout}
+        />
 
         {activeTab === 'certificates' && (
           <CertificatesSection

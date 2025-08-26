@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface TeamRepository extends JpaRepository<Team, Long> {
     List<Team> findByProductArea_Id(Long productAreaId);
+    List<Team> findByProductArea_Name(String productAreaName);
 }
