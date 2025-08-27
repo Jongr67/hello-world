@@ -273,7 +273,158 @@ spring.web.resources.add-mappings=true
 
 ## ER Diagram
 
-![ER Diagram](docs/er.mmd)
+The following Mermaid diagram shows the complete entity relationships in the Security Dashboard:
+
+```mermaid
+erDiagram
+    ProductArea {
+        id BIGINT PK
+        name VARCHAR(100) UK
+        description TEXT
+        apg VARCHAR(50)
+        created_date DATE
+        updated_date DATE
+    }
+
+    Application {
+        id BIGINT PK
+        seal_id VARCHAR(50) UK
+        name VARCHAR(100)
+        platform VARCHAR(50)
+        team_id BIGINT FK
+        created_date DATE
+        updated_date DATE
+    }
+
+    Team {
+        id BIGINT PK
+        name VARCHAR(100)
+        description TEXT
+        product_area_id BIGINT FK
+        created_date DATE
+        updated_date DATE
+    }
+
+    Person {
+        id BIGINT PK
+        first_name VARCHAR(100)
+        last_name VARCHAR(100)
+        sid VARCHAR(50) UK
+        email VARCHAR(255)
+        created_date DATE
+        updated_date DATE
+    }
+
+    Role {
+        id BIGINT PK
+        name VARCHAR(50) UK
+        description TEXT
+        created_date DATE
+        updated_date DATE
+    }
+
+    ApplicationTeam {
+        id BIGINT PK
+        application_id BIGINT FK
+        team_id BIGINT FK
+        relationship VARCHAR(50)
+        created_date DATE
+        updated_date DATE
+    }
+
+    TeamMembership {
+        id BIGINT PK
+        team_id BIGINT FK
+        person_id BIGINT FK
+        role_id BIGINT FK
+        start_date DATE
+        end_date DATE
+        is_primary BOOLEAN
+        created_date DATE
+        updated_date DATE
+    }
+
+    CodeRepository {
+        id BIGINT PK
+        repository_url VARCHAR(255) UK
+        project_id VARCHAR(100) UK
+        application_id BIGINT FK
+        team_id BIGINT FK
+        created_date DATE
+        updated_date DATE
+    }
+
+    FarmFinding {
+        id BIGINT PK
+        description TEXT
+        application_seal_id VARCHAR(50) FK
+        severity VARCHAR(20)
+        criticality VARCHAR(20)
+        target_date DATE
+        assigned_apg VARCHAR(50)
+        created_date DATE
+    }
+
+    ResolverTicket {
+        id BIGINT PK
+        jira_key VARCHAR(50)
+        jira_url VARCHAR(255)
+        apg VARCHAR(50)
+        status VARCHAR(50)
+        finding_id BIGINT FK
+        application_seal_id VARCHAR(50) FK
+    }
+
+    Certificate {
+        id BIGINT PK
+        cn VARCHAR(255)
+        serial VARCHAR(100)
+        expiration_date DATE
+        application_id BIGINT FK
+    }
+
+    HitCounter {
+        id BIGINT PK
+        count BIGINT
+    }
+
+    ProductArea ||--o{ Application : "has"
+    ProductArea ||--o{ Team : "has"
+    Team ||--o{ Application : "supports"
+    Team ||--o{ CodeRepository : "owns"
+    Application ||--o{ CodeRepository : "has"
+    Application ||--o{ FarmFinding : "has"
+    Application ||--o{ Certificate : "has"
+    Application }o--o{ Team : "mapped via"
+    Team }o--o{ Person : "has members"
+    Person }o--o{ Role : "has roles"
+    FarmFinding ||--o{ ResolverTicket : "has"
+    ApplicationTeam }|--|| Application : "references"
+    ApplicationTeam }|--|| Team : "references"
+    TeamMembership }|--|| Team : "references"
+    TeamMembership }|--|| Person : "references"
+    TeamMembership }|--|| Role : "references"
+    CodeRepository }|--|| Application : "belongs to"
+    CodeRepository }|--|| Team : "assigned to"
+    FarmFinding }|--|| Application : "belongs to"
+    ResolverTicket }|--|| FarmFinding : "resolves"
+    ResolverTicket }|--|| Application : "belongs to"
+    Certificate }|--|| Application : "belongs to"
+```
+
+### Key Relationships:
+
+- **ProductArea** → **Team**: One product area can have multiple teams
+- **ProductArea** → **Application**: One product area can have multiple applications (via team)
+- **Team** → **Application**: Teams support applications (many-to-many via ApplicationTeam)
+- **Team** → **Person**: Teams have members (many-to-many-to-many via TeamMembership)
+- **Application** → **FarmFinding**: Applications can have multiple security findings
+- **Application** → **Certificate**: Applications can have multiple certificates
+- **Application** → **CodeRepository**: Applications can have multiple code repositories
+- **FarmFinding** → **ResolverTicket**: Findings can have multiple resolver tickets
+- **Team** → **CodeRepository**: Teams can own multiple code repositories
+
+The diagram shows the complete data model with all entities and their relationships, including the new CodeRepository entity and the updated team-based application assignment structure.
 
 ## REST APIs
 
