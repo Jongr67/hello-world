@@ -14,7 +14,7 @@ export type Application = {
   sealId: string;
   name: string;
   platform?: string;
-  owningApg?: string;
+  team?: Team;
   codeRepository?: string;
   certificates?: string;
   productArea?: ProductArea;
@@ -43,6 +43,7 @@ export type ProductArea = {
   id: number;
   name: string;
   description?: string;
+  apg?: string;
   createdDate?: string;
   updatedDate?: string;
 };
@@ -91,6 +92,16 @@ export type ApplicationTeam = {
   application: Application;
   team: Team;
   relationship: string;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export type CodeRepository = {
+  id: number;
+  repositoryUrl: string;
+  projectId: string;
+  application?: Application;
+  team?: Team;
   createdDate?: string;
   updatedDate?: string;
 };

@@ -1,6 +1,6 @@
 ## Overview
 
-This project is a comprehensive Security Dashboard that tracks FARM findings, applications, certificates, resolver tickets, and team management. It provides a React-based UI backed by a Spring Boot API with H2 as the data store.
+This project is a comprehensive Security Dashboard that tracks FARM findings, applications, certificates, resolver tickets, team management, and code repositories. It provides a React-based UI backed by a Spring Boot API with H2 as the data store.
 
 - **Frontend**: React 18 + Vite (dev server at `http://localhost:5173` with proxy to the backend). UI code is modular:
   - `frontend/src/components/FindingsSection.tsx` - Interactive pie charts with filtering
@@ -8,6 +8,7 @@ This project is a comprehensive Security Dashboard that tracks FARM findings, ap
   - `frontend/src/components/CertificatesSection.tsx` - Certificate management
   - `frontend/src/components/TicketsSection.tsx` - Global ticket management
   - `frontend/src/components/TeamsSection.tsx` - Team and personnel management
+  - `frontend/src/components/CodeRepositoriesSection.tsx` - Code repository management
   - `frontend/src/components/TicketFlyout.tsx` - Ticket management flyout
   - `frontend/src/components/FindingsFlyout.tsx` - Findings display flyout
   - Shared types: `frontend/src/types/domain.ts`
@@ -15,15 +16,15 @@ This project is a comprehensive Security Dashboard that tracks FARM findings, ap
 - **Backend**: Spring Boot 3 (Java 17), Spring Data JPA, H2 database
 - **Database**: H2 file on disk (data persisted under `./data/hello.*`)
 
-The dashboard provides comprehensive security management with interactive filtering, team organization, and detailed tracking of findings, applications, and their relationships.
+The dashboard provides comprehensive security management with interactive filtering, team organization, code repository tracking, and detailed management of findings, applications, and their relationships.
 
 ## Architecture
 
 - **Backend** (`src/main/java/com/example/hello`)
   - `HelloApplication` — Spring Boot entry point
-  - `controllers` — REST controllers (findings, applications, certificates, resolver tickets, teams, product areas, people, roles, hello/count)
+  - `controllers` — REST controllers (findings, applications, certificates, resolver tickets, teams, product areas, people, roles, code repositories, hello/count)
   - `service` — business logic for all entities
-  - `model` — JPA entities: `FarmFinding`, `ResolverTicket`, `Application`, `Certificate`, `HitCounter`, `ProductArea`, `Team`, `Person`, `Role`, `ApplicationTeam`, `TeamMembership`
+  - `model` — JPA entities: `FarmFinding`, `ResolverTicket`, `Application`, `Certificate`, `HitCounter`, `ProductArea`, `Team`, `Person`, `Role`, `ApplicationTeam`, `TeamMembership`, `CodeRepository`
   - `repository` — Spring Data repositories
   - `DataInitializer` — seeds demo data for all entities
 - **Frontend** (`frontend/`)
@@ -47,9 +48,9 @@ The dashboard provides comprehensive security management with interactive filter
 - **Filtered Views**: Clear indicators when filters are active
 
 ### **Applications Management**
-- **Applications Table**: App Name, Platform, Owning APG, Code Repository, Certificates, Farm Findings count
+- **Applications Table**: App Name, Platform, Assigned Team, APG (derived from team), Code Repository, Certificates, Farm Findings count
 - **Interactive Findings Count**: Click to open findings flyout for that application
-- **CRUD Operations**: Create/Edit/Delete applications
+- **CRUD Operations**: Create/Edit/Delete applications with team assignment
 - **Findings Flyout**: Dedicated component showing all findings for selected application with ticket management
 
 ### **Certificates Management**
@@ -64,14 +65,23 @@ The dashboard provides comprehensive security management with interactive filter
 - **Excel Export/Import**: Bulk operations for ticket data
 - **Real-time Updates**: Changes reflect immediately across all views
 
-### **Teams Management** (NEW)
-- **Product Areas**: Organizational units for applications
+### **Teams Management**
+- **Product Areas**: Organizational units for applications with APG designation
 - **Teams**: Support teams within product areas
 - **People**: Individual team members with SID (Security ID)
 - **Roles**: Team member roles (e.g., Developer, Lead, Manager)
 - **Application-Team Relationships**: Link applications to support teams
 - **Team Memberships**: Track who is on which team with what role
 - **Comprehensive CRUD**: Full management of all team entities
+- **Form Management**: Proper form state handling with tab switching
+
+### **Code Repositories Management** (NEW)
+- **Code Repositories Table**: Repository URL, Project ID, Application Name, Assigned Team
+- **CRUD Operations**: Create, edit, delete code repositories
+- **Application Association**: Link repositories to applications
+- **Team Assignment**: Assign repositories to support teams
+- **Excel Export/Import**: Bulk operations for repository data
+- **Dedicated Tab**: Separate management interface
 
 ### **Interactive Features**
 - **Pie Chart Filtering**: Click charts to filter data, see "Show All" buttons
@@ -79,6 +89,7 @@ The dashboard provides comprehensive security management with interactive filter
 - **Real-time Updates**: Changes propagate across all views
 - **Excel Integration**: Export and import for bulk operations
 - **Responsive Design**: Modern UI with consistent styling
+- **Form State Management**: Proper form handling with tab switching
 
 ## Quick start
 
@@ -128,10 +139,8 @@ spring.web.resources.add-mappings=true
   "sealId": "APP-00001",      // unique link key
   "name": "Customer Portal",
   "platform": "Web",
-  "owningApg": "Relationships",
-  "codeRepository": "https://git.example.com/customer-portal",
-  "certificates": "customer.example.com; portal.example.com",
-  "productArea": { "id": 1, "name": "Customer Experience" }
+  "team": { "id": 1, "name": "Customer Portal Team" },
+  "productArea": { "id": 1, "name": "Customer Experience", "apg": "Relationships" }
 }
 ```
 
@@ -172,6 +181,19 @@ spring.web.resources.add-mappings=true
 }
 ```
 
+#### CodeRepository (NEW)
+```json
+{
+  "id": 1,
+  "repositoryUrl": "https://git.example.com/customer-portal",
+  "projectId": "CUST-PORTAL-001",
+  "application": { "id": 1, "name": "Customer Portal" },
+  "team": { "id": 1, "name": "Customer Portal Team" },
+  "createdDate": "2025-01-01T00:00:00",
+  "updatedDate": "2025-01-01T00:00:00"
+}
+```
+
 ### Team Management Entities
 
 #### ProductArea
@@ -180,6 +202,7 @@ spring.web.resources.add-mappings=true
   "id": 1,
   "name": "Customer Experience",
   "description": "Customer-facing applications and services",
+  "apg": "Relationships",
   "createdDate": "2025-01-01T00:00:00",
   "updatedDate": "2025-01-01T00:00:00"
 }
@@ -191,7 +214,7 @@ spring.web.resources.add-mappings=true
   "id": 1,
   "name": "Customer Portal Team",
   "description": "Maintains customer portal applications",
-  "productArea": { "id": 1, "name": "Customer Experience" },
+  "productArea": { "id": 1, "name": "Customer Experience", "apg": "Relationships" },
   "createdDate": "2025-01-01T00:00:00",
   "updatedDate": "2025-01-01T00:00:00"
 }
@@ -297,6 +320,18 @@ Excel:
 - `PUT /api/certificates/{id}` — update a certificate
 - `DELETE /api/certificates/{id}` — delete a certificate
 
+### Code Repositories (NEW)
+
+- `GET /api/code-repositories` — list all code repositories
+- `GET /api/code-repositories/{id}` — get by ID
+- `POST /api/code-repositories` — create
+- `PUT /api/code-repositories/{id}` — update
+- `DELETE /api/code-repositories/{id}` — delete
+
+Excel:
+- `GET /api/code-repositories/export` — download code-repositories.xlsx
+- `POST /api/code-repositories/import` — upload code-repositories.xlsx
+
 ### Team Management APIs
 
 #### Product Areas
@@ -367,10 +402,11 @@ Controllers enable CORS for the Vite dev server origin:
 
 `DataInitializer` seeds comprehensive demo data:
 
-- **Applications**: 3 sample applications with different platforms and APGs
+- **Applications**: 3 sample applications with different platforms and team assignments
 - **FARM Findings**: Up to 50 findings distributed across APGs with randomized severity/criticality/target dates
 - **Certificates**: Sample certificates for seeded applications
-- **Product Areas**: 3 organizational units (Customer Experience, Backend Services, Infrastructure)
+- **Code Repositories**: 3 sample repositories linked to applications and teams
+- **Product Areas**: 3 organizational units (Customer Experience, Identity & Security, Data & Analytics) with APG designations
 - **Teams**: 6 teams across the product areas
 - **People**: 12 team members with unique SIDs
 - **Roles**: 4 roles (Developer, Lead, Manager, Architect)
@@ -394,7 +430,13 @@ Controllers enable CORS for the Vite dev server origin:
 ### Excel Integration
 - **Export**: Download current data as Excel files
 - **Import**: Bulk upload data from Excel files
-- **Supported**: Findings, Tickets, and all team management entities
+- **Supported**: Findings, Tickets, Code Repositories, and all team management entities
+
+### Form Management
+- **Tab Switching**: Forms properly close when switching between tabs
+- **State Management**: Form state is reset appropriately
+- **Validation**: Required fields and proper error handling
+- **Real-time Updates**: Changes reflect immediately across all views
 
 ## Development notes
 
@@ -403,5 +445,7 @@ Controllers enable CORS for the Vite dev server origin:
 - All components are modular and reusable with clear separation of concerns.
 - The application supports comprehensive team management with full CRUD operations.
 - Interactive filtering provides powerful data exploration capabilities.
+- Code repository management provides complete tracking of development repositories.
+- Form state management ensures proper user experience across all tabs.
 
 

@@ -8,13 +8,14 @@ import {
 import { Pie } from 'react-chartjs-2';
 import TicketsSection from '../components/TicketsSection';
 import FindingsSection from '../components/FindingsSection';
-import { Application, Finding } from '../types/domain';
+import { Application, Finding, Team } from '../types/domain';
 import { api } from '../services/api';
 import ApplicationsSection from '../components/ApplicationsSection';
 import CertificatesSection from '../components/CertificatesSection';
 import { TeamsSection } from '../components/TeamsSection';
 import { TicketFlyout } from '../components/TicketFlyout';
 import { FindingsFlyout } from '../components/FindingsFlyout';
+import CodeRepositoriesSection from '../components/CodeRepositoriesSection';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -29,7 +30,7 @@ type Ticket = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'findings' | 'applications' | 'certificates' | 'tickets' | 'teams'>('findings');
+  const [activeTab, setActiveTab] = useState<'findings' | 'applications' | 'certificates' | 'tickets' | 'teams' | 'repositories'>('findings');
   const [tickets, setTickets] = useState<Array<{
     id: number;
     jiraKey?: string;
@@ -57,8 +58,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [teams, setTeams] = useState<Team[]>([]);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
-  const [formApp, setFormApp] = useState<Partial<Application>>({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '' });
+  const [formApp, setFormApp] = useState<Partial<Application>>({ sealId: '', name: '', platform: '', codeRepository: '' });
 
   const [editingTicketId, setEditingTicketId] = useState<number | null>(null);
   const [editingTicketFields, setEditingTicketFields] = useState<Partial<Ticket>>({});
@@ -71,14 +73,15 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [summaryData, findingsData, appsData, certsData, ticketsData] = await Promise.all([
-          api.getFindingsSummary(), api.getFindings(), api.getApplications(), api.getCertificates(), api.getTickets()
+        const [summaryData, findingsData, appsData, certsData, ticketsData, teamsData] = await Promise.all([
+          api.getFindingsSummary(), api.getFindings(), api.getApplications(), api.getCertificates(), api.getTickets(), api.getTeams()
         ]);
         setSummary(summaryData || {});
         setFindings(Array.isArray(findingsData) ? findingsData : []);
         setApplications(Array.isArray(appsData) ? appsData : []);
         setCertificates(Array.isArray(certsData) ? certsData : []);
         setTickets(Array.isArray(ticketsData) ? ticketsData : []);
+        setTeams(Array.isArray(teamsData) ? teamsData : []);
         setError('');
       } catch (e: any) {
         setError(e.message || String(e));
@@ -120,12 +123,17 @@ export default function App() {
 
   function startCreateApp() {
     setEditingApp(null);
-    setFormApp({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '' });
+    setFormApp({ sealId: '', name: '', platform: '', codeRepository: '' });
   }
 
   function startEditApp(app: Application) {
     setEditingApp(app);
     setFormApp({ ...app });
+  }
+
+  function updateFormTeam(teamId: number | null) {
+    const team = teamId ? teams.find(t => t.id === teamId) : undefined;
+    setFormApp(prev => ({ ...prev, team }));
   }
 
   function updateForm<K extends keyof Application>(key: K, value: Application[K]) {
@@ -139,7 +147,7 @@ export default function App() {
         sealId: formApp.sealId?.trim() || '',
         name: formApp.name?.trim() || '',
         platform: formApp.platform || '',
-        owningApg: formApp.owningApg || '',
+        teamId: formApp.team?.id || null,
         codeRepository: formApp.codeRepository || '',
       };
       if (!payload.sealId || !payload.name) {
@@ -154,7 +162,7 @@ export default function App() {
       if (!res.ok) throw new Error(`Failed to ${editingApp ? 'update' : 'create'} application`);
       await refreshApplications();
       setEditingApp(null);
-      setFormApp({ sealId: '', name: '', platform: '', owningApg: '', codeRepository: '' });
+      setFormApp({ sealId: '', name: '', platform: '', codeRepository: '' });
       setError('');
     } catch (e: any) {
       setError(e.message || String(e));
@@ -398,6 +406,7 @@ export default function App() {
             <button onClick={() => setActiveTab('certificates')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'certificates' ? '#d1d5db' : 'transparent'), background: activeTab === 'certificates' ? '#fff' : 'transparent', cursor: 'pointer' }}>Certificates</button>
             <button onClick={() => setActiveTab('tickets')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'tickets' ? '#d1d5db' : 'transparent'), background: activeTab === 'tickets' ? '#fff' : 'transparent', cursor: 'pointer' }}>Resolver Tickets</button>
             <button onClick={() => setActiveTab('teams')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'teams' ? '#d1d5db' : 'transparent'), background: activeTab === 'teams' ? '#fff' : 'transparent', cursor: 'pointer' }}>Teams</button>
+            <button onClick={() => setActiveTab('repositories')} style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid ' + (activeTab === 'repositories' ? '#d1d5db' : 'transparent'), background: activeTab === 'repositories' ? '#fff' : 'transparent', cursor: 'pointer' }}>Code Repositories</button>
           </div>
         </div>
 
@@ -426,6 +435,7 @@ export default function App() {
         {activeTab === 'applications' && (
           <ApplicationsSection
             applications={applications}
+            teams={teams}
             loading={loading}
             findingsBySealId={findingsBySealId}
             editingApp={editingApp}
@@ -435,6 +445,7 @@ export default function App() {
             deleteApp={deleteApp}
             submitAppForm={submitAppForm}
             updateForm={updateForm as any}
+            updateFormTeam={updateFormTeam}
             openFindingsFlyout={openFindingsFlyout}
           />
         )}
@@ -474,6 +485,14 @@ export default function App() {
 
         {activeTab === 'teams' && (
           <TeamsSection />
+        )}
+
+        {activeTab === 'repositories' && (
+          <CodeRepositoriesSection
+            applications={applications}
+            teams={teams}
+            loading={loading}
+          />
         )}
       </div>
     </div>

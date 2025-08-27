@@ -1,8 +1,9 @@
 import React from 'react';
-import type { Application } from '../types/domain';
+import type { Application, Team } from '../types/domain';
 
 type Props = {
   applications: Application[];
+  teams: Team[];
   loading: boolean;
   findingsBySealId: Record<string, number>;
   editingApp: Application | null;
@@ -12,10 +13,11 @@ type Props = {
   deleteApp: (app: Application) => void;
   submitAppForm: (e: React.FormEvent) => void | Promise<void>;
   updateForm: (key: keyof Application, value: any) => void;
+  updateFormTeam: (teamId: number | null) => void;
   openFindingsFlyout: (app: Application) => void;
 };
 
-export default function ApplicationsSection({ applications, loading, findingsBySealId, editingApp, formApp, startCreateApp, startEditApp, deleteApp, submitAppForm, updateForm, openFindingsFlyout }: Props) {
+export default function ApplicationsSection({ applications, teams, loading, findingsBySealId, editingApp, formApp, startCreateApp, startEditApp, deleteApp, submitAppForm, updateForm, updateFormTeam, openFindingsFlyout }: Props) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, alignItems: 'start' }}>
       <div style={{ padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
@@ -25,10 +27,11 @@ export default function ApplicationsSection({ applications, loading, findingsByS
         </div>
 
         <div style={{ overflowX: 'auto', marginTop: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 140px 160px 1fr 120px 120px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 900 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 140px 160px 160px 1fr 120px 120px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', fontWeight: 600, color: '#374151', minWidth: 1000 }}>
             <div>Seal ID</div>
             <div>App Name</div>
             <div>Platform</div>
+            <div>Assigned Team</div>
             <div>Owning APG</div>
             <div>Code Repository</div>
             <div>Certificates</div>
@@ -40,13 +43,14 @@ export default function ApplicationsSection({ applications, loading, findingsByS
             <div style={{ padding: '10px 0', color: '#6b7280', fontSize: 12 }}>No applications</div>
           ) : (
             applications.map(app => (
-              <div key={app.id} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 140px 160px 1fr 120px 120px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+              <div key={app.id} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 140px 160px 160px 1fr 120px 120px', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                 <div>{app.sealId}</div>
                 <div>
                   <div style={{ fontWeight: 600 }}>{app.name}</div>
                 </div>
                 <div>{app.platform || '-'}</div>
-                <div>{app.owningApg || '-'}</div>
+                <div>{app.team?.name || '-'}</div>
+                <div>{app.team?.productArea?.apg || '-'}</div>
                 <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.codeRepository || '-'}</div>
                 <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.certificates || '-'}</div>
                 <div>
@@ -92,8 +96,19 @@ export default function ApplicationsSection({ applications, loading, findingsByS
             <input value={formApp.platform || ''} onChange={e => updateForm('platform', e.target.value)} placeholder="Web / iOS / Android / Service" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Owning APG</label>
-            <input value={formApp.owningApg || ''} onChange={e => updateForm('owningApg', e.target.value)} placeholder="Relationships / Identity / ..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }} />
+            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Assigned Team</label>
+            <select 
+              value={formApp.team?.id || ''} 
+              onChange={e => updateFormTeam(e.target.value ? parseInt(e.target.value) : null)}
+              style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 8 }}
+            >
+              <option value="">Select a team...</option>
+              {teams.map(team => (
+                <option key={team.id} value={team.id}>
+                  {team.name} ({team.productArea?.apg})
+                </option>
+              ))}
+            </select>
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Code Repository</label>

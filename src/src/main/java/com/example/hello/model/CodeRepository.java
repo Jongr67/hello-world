@@ -4,20 +4,25 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "product_area")
-public class ProductArea {
+@Table(name = "code_repository")
+public class CodeRepository {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false, unique = true, length = 100)
-    private String name;
+    @Column(name = "repository_url", nullable = false, unique = true)
+    private String repositoryUrl;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "project_id", nullable = false, unique = true)
+    private String projectId;
 
-    @Column(name = "apg", nullable = false, length = 100)
-    private String apg;
+    @ManyToOne
+    @JoinColumn(name = "application_id")
+    private Application application;
+
+    @ManyToOne
+    @JoinColumn(name = "team_id")
+    private Team team;
 
     @Column(name = "created_date")
     private LocalDate createdDate;
@@ -45,28 +50,36 @@ public class ProductArea {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
+    public String getRepositoryUrl() {
+        return repositoryUrl;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setRepositoryUrl(String repositoryUrl) {
+        this.repositoryUrl = repositoryUrl;
     }
 
-    public String getDescription() {
-        return description;
+    public String getProjectId() {
+        return projectId;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
     }
 
-    public String getApg() {
-        return apg;
+    public Application getApplication() {
+        return application;
     }
 
-    public void setApg(String apg) {
-        this.apg = apg;
+    public void setApplication(Application application) {
+        this.application = application;
+    }
+
+    public Team getTeam() {
+        return team;
+    }
+
+    public void setTeam(Team team) {
+        this.team = team;
     }
 
     public LocalDate getCreatedDate() {

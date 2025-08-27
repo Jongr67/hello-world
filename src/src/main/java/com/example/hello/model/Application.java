@@ -34,7 +34,9 @@ public class Application {
 
 	private String platform;
 
-	private String owningApg;
+	@ManyToOne
+	@JoinColumn(name = "team_id")
+	private Team team;
 
 	private String codeRepository;
 
@@ -82,12 +84,19 @@ public class Application {
 		this.platform = platform;
 	}
 
-	public String getOwningApg() {
-		return owningApg;
+	public Team getTeam() {
+		return team;
 	}
 
-	public void setOwningApg(String owningApg) {
-		this.owningApg = owningApg;
+	public void setTeam(Team team) {
+		this.team = team;
+	}
+
+	/**
+	 * Get the APG derived from the team's product area
+	 */
+	public String getOwningApg() {
+		return team != null && team.getProductArea() != null ? team.getProductArea().getApg() : null;
 	}
 
 	public String getCodeRepository() {

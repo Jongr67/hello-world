@@ -20,7 +20,7 @@ export const TeamsSection: React.FC = () => {
   const [showMembershipForm, setShowMembershipForm] = useState(false);
 
   // Form data
-  const [productAreaForm, setProductAreaForm] = useState({ name: '', description: '' });
+  const [productAreaForm, setProductAreaForm] = useState({ name: '', description: '', apg: '' });
   const [teamForm, setTeamForm] = useState({ name: '', description: '', productAreaId: '' });
   const [personForm, setPersonForm] = useState({ firstName: '', lastName: '', sid: '', email: '' });
   const [roleForm, setRoleForm] = useState({ name: '', description: '' });
@@ -31,6 +31,15 @@ export const TeamsSection: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Reset forms when switching tabs
+  useEffect(() => {
+    setShowProductAreaForm(false);
+    setShowTeamForm(false);
+    setShowPersonForm(false);
+    setShowRoleForm(false);
+    setShowMembershipForm(false);
+  }, [activeTab]);
 
   const loadData = async () => {
     try {
@@ -54,16 +63,10 @@ export const TeamsSection: React.FC = () => {
   const handleProductAreaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/product-areas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productAreaForm)
-      });
-      if (response.ok) {
-        setProductAreaForm({ name: '', description: '' });
-        setShowProductAreaForm(false);
-        loadData();
-      }
+      await api.createProductArea(productAreaForm);
+      setProductAreaForm({ name: '', description: '', apg: '' });
+      setShowProductAreaForm(false);
+      loadData();
     } catch (error) {
       console.error('Error creating product area:', error);
     }
@@ -73,19 +76,18 @@ export const TeamsSection: React.FC = () => {
     e.preventDefault();
     try {
       const productArea = productAreas.find(pa => pa.id === parseInt(teamForm.productAreaId));
-      const response = await fetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...teamForm,
-          productArea: productArea
-        })
-      });
-      if (response.ok) {
-        setTeamForm({ name: '', description: '', productAreaId: '' });
-        setShowTeamForm(false);
-        loadData();
+      if (!productArea) {
+        console.error('Product area not found');
+        return;
       }
+      
+      await api.createTeam({
+        ...teamForm,
+        productArea: productArea
+      });
+      setTeamForm({ name: '', description: '', productAreaId: '' });
+      setShowTeamForm(false);
+      loadData();
     } catch (error) {
       console.error('Error creating team:', error);
     }
@@ -94,16 +96,10 @@ export const TeamsSection: React.FC = () => {
   const handlePersonSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/persons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(personForm)
-      });
-      if (response.ok) {
-        setPersonForm({ firstName: '', lastName: '', sid: '', email: '' });
-        setShowPersonForm(false);
-        loadData();
-      }
+      await api.createPerson(personForm);
+      setPersonForm({ firstName: '', lastName: '', sid: '', email: '' });
+      setShowPersonForm(false);
+      loadData();
     } catch (error) {
       console.error('Error creating person:', error);
     }
@@ -112,16 +108,10 @@ export const TeamsSection: React.FC = () => {
   const handleRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/roles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(roleForm)
-      });
-      if (response.ok) {
-        setRoleForm({ name: '', description: '' });
-        setShowRoleForm(false);
-        loadData();
-      }
+      await api.createRole(roleForm);
+      setRoleForm({ name: '', description: '' });
+      setShowRoleForm(false);
+      loadData();
     } catch (error) {
       console.error('Error creating role:', error);
     }
@@ -134,21 +124,20 @@ export const TeamsSection: React.FC = () => {
       const person = persons.find(p => p.id === parseInt(membershipForm.personId));
       const role = roles.find(r => r.id === parseInt(membershipForm.roleId));
       
-      const response = await fetch('/api/team-memberships', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...membershipForm,
-          team: team,
-          person: person,
-          role: role
-        })
-      });
-      if (response.ok) {
-        setMembershipForm({ teamId: '', personId: '', roleId: '', startDate: '', endDate: '', isPrimary: false });
-        setShowMembershipForm(false);
-        loadData();
+      if (!team || !person || !role) {
+        console.error('Team, person, or role not found');
+        return;
       }
+      
+      await api.createTeamMembership({
+        ...membershipForm,
+        team: team,
+        person: person,
+        role: role
+      });
+      setMembershipForm({ teamId: '', personId: '', roleId: '', startDate: '', endDate: '', isPrimary: false });
+      setShowMembershipForm(false);
+      loadData();
     } catch (error) {
       console.error('Error creating membership:', error);
     }
@@ -199,6 +188,7 @@ export const TeamsSection: React.FC = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">APG</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                 </tr>
@@ -207,6 +197,7 @@ export const TeamsSection: React.FC = () => {
                 {productAreas.map(area => (
                   <tr key={area.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{area.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{area.apg}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{area.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{area.createdDate}</td>
                   </tr>
@@ -237,6 +228,7 @@ export const TeamsSection: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Area</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">APG</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                 </tr>
               </thead>
@@ -246,6 +238,7 @@ export const TeamsSection: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{team.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{team.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{team.productArea.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{team.productArea.apg}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{team.createdDate}</td>
                   </tr>
                 ))}
@@ -392,6 +385,16 @@ export const TeamsSection: React.FC = () => {
                 />
               </div>
               <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">APG</label>
+                <input
+                  type="text"
+                  value={productAreaForm.apg}
+                  onChange={(e) => setProductAreaForm({...productAreaForm, apg: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  required
+                />
+              </div>
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                 <textarea
                   value={productAreaForm.description}
@@ -454,7 +457,7 @@ export const TeamsSection: React.FC = () => {
                 >
                   <option value="">Select Product Area</option>
                   {productAreas.map(area => (
-                    <option key={area.id} value={area.id}>{area.name}</option>
+                    <option key={area.id} value={area.id}>{area.name} ({area.apg})</option>
                   ))}
                 </select>
               </div>

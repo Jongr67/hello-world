@@ -11,6 +11,8 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 	Optional<Application> findBySealId(String sealId);
 
 	boolean existsBySealId(String sealId);
+	
+	Optional<Application> findByName(String name);
 }
 
 

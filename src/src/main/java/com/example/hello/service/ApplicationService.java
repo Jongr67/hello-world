@@ -6,15 +6,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.hello.model.Application;
+import com.example.hello.model.Team;
 import com.example.hello.repository.ApplicationRepository;
+import com.example.hello.repository.TeamRepository;
 
 @Service
 public class ApplicationService {
 
 	private final ApplicationRepository applicationRepository;
+	private final TeamRepository teamRepository;
 
-	public ApplicationService(ApplicationRepository applicationRepository) {
+	public ApplicationService(ApplicationRepository applicationRepository, TeamRepository teamRepository) {
 		this.applicationRepository = applicationRepository;
+		this.teamRepository = teamRepository;
 	}
 
 	public List<Application> getAll() {
@@ -40,7 +44,7 @@ public class ApplicationService {
 		existing.setSealId(updated.getSealId());
 		existing.setName(updated.getName());
 		existing.setPlatform(updated.getPlatform());
-		existing.setOwningApg(updated.getOwningApg());
+		existing.setTeam(updated.getTeam());
 		existing.setCodeRepository(updated.getCodeRepository());
 		existing.setCertificates(updated.getCertificates());
 		return applicationRepository.save(existing);

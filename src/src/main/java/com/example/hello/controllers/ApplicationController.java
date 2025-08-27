@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.hello.model.Application;
+import com.example.hello.model.Team;
 import com.example.hello.service.ApplicationService;
+import com.example.hello.service.TeamService;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:5173")
@@ -21,9 +23,11 @@ import com.example.hello.service.ApplicationService;
 public class ApplicationController {
 
 	private final ApplicationService applicationService;
+	private final TeamService teamService;
 
-	public ApplicationController(ApplicationService applicationService) {
+	public ApplicationController(ApplicationService applicationService, TeamService teamService) {
 		this.applicationService = applicationService;
+		this.teamService = teamService;
 	}
 
 	@GetMapping
@@ -37,13 +41,48 @@ public class ApplicationController {
 	}
 
 	@PostMapping
-	public Application create(@RequestBody Application application) {
+	public Application create(@RequestBody ApplicationRequest request) {
+		Application application = new Application();
+		application.setSealId(request.sealId);
+		application.setName(request.name);
+		application.setPlatform(request.platform);
+		application.setCodeRepository(request.codeRepository);
+		application.setCertificates(request.certificates);
+		
+		if (request.teamId != null) {
+			Team team = teamService.findById(request.teamId).orElseThrow(() -> new IllegalArgumentException("Team not found with ID: " + request.teamId));
+			application.setTeam(team);
+		}
+		
 		return applicationService.create(application);
 	}
 
 	@PutMapping("/{id}")
-	public Application update(@PathVariable Long id, @RequestBody Application application) {
+	public Application update(@PathVariable Long id, @RequestBody ApplicationRequest request) {
+		Application application = applicationService.getById(id);
+		application.setSealId(request.sealId);
+		application.setName(request.name);
+		application.setPlatform(request.platform);
+		application.setCodeRepository(request.codeRepository);
+		application.setCertificates(request.certificates);
+		
+		if (request.teamId != null) {
+			Team team = teamService.findById(request.teamId).orElseThrow(() -> new IllegalArgumentException("Team not found with ID: " + request.teamId));
+			application.setTeam(team);
+		} else {
+			application.setTeam(null);
+		}
+		
 		return applicationService.update(id, application);
+	}
+
+	public static class ApplicationRequest {
+		public String sealId;
+		public String name;
+		public String platform;
+		public String codeRepository;
+		public String certificates;
+		public Long teamId;
 	}
 
 	@DeleteMapping("/{id}")

@@ -17,6 +17,7 @@ import com.example.hello.model.Person;
 import com.example.hello.model.Role;
 import com.example.hello.model.TeamMembership;
 import com.example.hello.model.ApplicationTeam;
+import com.example.hello.model.CodeRepository;
 import com.example.hello.repository.ApplicationRepository;
 import com.example.hello.repository.CertificateRepository;
 import com.example.hello.repository.FarmFindingRepository;
@@ -26,6 +27,7 @@ import com.example.hello.repository.PersonRepository;
 import com.example.hello.repository.RoleRepository;
 import com.example.hello.repository.TeamMembershipRepository;
 import com.example.hello.repository.ApplicationTeamRepository;
+import com.example.hello.repository.CodeRepositoryRepository;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -39,8 +41,9 @@ public class DataInitializer implements CommandLineRunner {
 	private final RoleRepository roleRepository;
 	private final TeamMembershipRepository teamMembershipRepository;
 	private final ApplicationTeamRepository applicationTeamRepository;
+	private final CodeRepositoryRepository codeRepositoryRepository;
 
-	public DataInitializer(FarmFindingRepository farmFindingRepository, ApplicationRepository applicationRepository, CertificateRepository certificateRepository, ProductAreaRepository productAreaRepository, TeamRepository teamRepository, PersonRepository personRepository, RoleRepository roleRepository, TeamMembershipRepository teamMembershipRepository, ApplicationTeamRepository applicationTeamRepository) {
+	public DataInitializer(FarmFindingRepository farmFindingRepository, ApplicationRepository applicationRepository, CertificateRepository certificateRepository, ProductAreaRepository productAreaRepository, TeamRepository teamRepository, PersonRepository personRepository, RoleRepository roleRepository, TeamMembershipRepository teamMembershipRepository, ApplicationTeamRepository applicationTeamRepository, CodeRepositoryRepository codeRepositoryRepository) {
 		this.farmFindingRepository = farmFindingRepository;
 		this.applicationRepository = applicationRepository;
 		this.certificateRepository = certificateRepository;
@@ -50,6 +53,7 @@ public class DataInitializer implements CommandLineRunner {
 		this.roleRepository = roleRepository;
 		this.teamMembershipRepository = teamMembershipRepository;
 		this.applicationTeamRepository = applicationTeamRepository;
+		this.codeRepositoryRepository = codeRepositoryRepository;
 	}
 
 	@Override
@@ -60,16 +64,19 @@ public class DataInitializer implements CommandLineRunner {
 			ProductArea pa1 = new ProductArea();
 			pa1.setName("Customer Experience");
 			pa1.setDescription("Customer-facing applications and services");
+			pa1.setApg("Relationships");
 			productAreaRepository.save(pa1);
 
 			ProductArea pa2 = new ProductArea();
 			pa2.setName("Identity & Security");
 			pa2.setDescription("Identity management and security services");
+			pa2.setApg("Identity");
 			productAreaRepository.save(pa2);
 
 			ProductArea pa3 = new ProductArea();
 			pa3.setName("Data & Analytics");
 			pa3.setDescription("Data processing and analytics services");
+			pa3.setApg("Data");
 			productAreaRepository.save(pa3);
 		}
 
@@ -123,6 +130,14 @@ public class DataInitializer implements CommandLineRunner {
 				team3.setProductArea(identity);
 				teamRepository.save(team3);
 			}
+
+			if (data != null) {
+				Team team4 = new Team();
+				team4.setName("Data Analytics Team");
+				team4.setDescription("Team responsible for data analytics");
+				team4.setProductArea(data);
+				teamRepository.save(team4);
+			}
 		}
 
 		// Seed Persons if none exist
@@ -153,12 +168,23 @@ public class DataInitializer implements CommandLineRunner {
 		if (applicationRepository.count() == 0) {
 			ProductArea customerExp = productAreaRepository.findByName("Customer Experience").orElse(null);
 			ProductArea identity = productAreaRepository.findByName("Identity & Security").orElse(null);
+			ProductArea data = productAreaRepository.findByName("Data & Analytics").orElse(null);
+
+			Team customerPortalTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Customer Portal Team"))
+				.findFirst().orElse(null);
+			Team identityTeam = teamRepository.findByProductArea_Name("Identity & Security").stream()
+				.filter(t -> t.getName().equals("Identity Service Team"))
+				.findFirst().orElse(null);
+			Team preferencesTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Preferences Team"))
+				.findFirst().orElse(null);
 
 			Application app1 = new Application();
 			app1.setSealId("APP-00001");
 			app1.setName("Customer Portal");
 			app1.setPlatform("Web");
-			app1.setOwningApg("Relationships");
+			app1.setTeam(customerPortalTeam);
 			app1.setCodeRepository("https://git.example.com/customer-portal");
 			app1.setCertificates("customer.example.com; portal.example.com");
 			app1.setProductArea(customerExp);
@@ -168,7 +194,7 @@ public class DataInitializer implements CommandLineRunner {
 			app2.setSealId("APP-00002");
 			app2.setName("Identity Service");
 			app2.setPlatform("Service");
-			app2.setOwningApg("Identity");
+			app2.setTeam(identityTeam);
 			app2.setCodeRepository("https://git.example.com/identity-service");
 			app2.setCertificates("id.example.com");
 			app2.setProductArea(identity);
@@ -178,7 +204,7 @@ public class DataInitializer implements CommandLineRunner {
 			app3.setSealId("APP-00003");
 			app3.setName("Preferences API");
 			app3.setPlatform("Service");
-			app3.setOwningApg("Preferences");
+			app3.setTeam(preferencesTeam);
 			app3.setCodeRepository("https://git.example.com/preferences-api");
 			app3.setCertificates("prefs.example.com");
 			app3.setProductArea(customerExp);
@@ -318,6 +344,52 @@ public class DataInitializer implements CommandLineRunner {
 					certificateRepository.save(c);
 				});
 		});
+
+		// Seed Code Repositories if none exist
+		if (codeRepositoryRepository.count() == 0) {
+			Application customerPortal = applicationRepository.findBySealId("APP-00001").orElse(null);
+			Application identityService = applicationRepository.findBySealId("APP-00002").orElse(null);
+			Application preferencesApi = applicationRepository.findBySealId("APP-00003").orElse(null);
+			
+			Team customerPortalTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Customer Portal Team"))
+				.findFirst().orElse(null);
+			
+			Team preferencesTeam = teamRepository.findByProductArea_Name("Customer Experience").stream()
+				.filter(t -> t.getName().equals("Preferences Team"))
+				.findFirst().orElse(null);
+			
+			Team identityTeam = teamRepository.findByProductArea_Name("Identity & Security").stream()
+				.filter(t -> t.getName().equals("Identity Service Team"))
+				.findFirst().orElse(null);
+
+			if (customerPortal != null && customerPortalTeam != null) {
+				CodeRepository repo1 = new CodeRepository();
+				repo1.setRepositoryUrl("https://git.example.com/customer-portal");
+				repo1.setProjectId("CUST-PORTAL-001");
+				repo1.setApplication(customerPortal);
+				repo1.setTeam(customerPortalTeam);
+				codeRepositoryRepository.save(repo1);
+			}
+
+			if (identityService != null && identityTeam != null) {
+				CodeRepository repo2 = new CodeRepository();
+				repo2.setRepositoryUrl("https://git.example.com/identity-service");
+				repo2.setProjectId("IDENTITY-001");
+				repo2.setApplication(identityService);
+				repo2.setTeam(identityTeam);
+				codeRepositoryRepository.save(repo2);
+			}
+
+			if (preferencesApi != null && preferencesTeam != null) {
+				CodeRepository repo3 = new CodeRepository();
+				repo3.setRepositoryUrl("https://git.example.com/preferences-api");
+				repo3.setProjectId("PREFERENCES-001");
+				repo3.setApplication(preferencesApi);
+				repo3.setTeam(preferencesTeam);
+				codeRepositoryRepository.save(repo3);
+			}
+		}
 
 		long existing = farmFindingRepository.count();
 		long target = 50;
